@@ -1,5 +1,5 @@
-Peltar: Two dimensional gravity-based space combat game
-=======================================================
+Peltar: 2D gravity-based space combat game
+==========================================
 
 > **Note**: This game is completely unfinished and not actively developed.
 
