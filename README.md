@@ -40,7 +40,7 @@ To build the test programs I used to develop individual features, run:
 make test
 ```
 
-To play the same, run:
+To play the game, run:
 
 ```
 ./peltar
@@ -89,7 +89,7 @@ There are also several test programs.  My favourites are:
   helpful while tweaking the texturing code.  The `t` key generates a new
   random planet texture.  I never got around to adding ice caps at the poles.
 
-* `./test-plant` was the first thing written to test the sphere rendering
+* `./test-planet` was the first thing written to test the sphere rendering
   algorithm.  If run with any command line argument, it will render a fixed
   number of frames of planet rotation and then exit.  I used it to benchmark
   different optimisations for performance.
