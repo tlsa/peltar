@@ -1,0 +1,11 @@
+peltar
+src/lib/*.o
+src/lib/texture/*.o
+src/noise/*.o
+src/*.o
+test-level
+test-lighting
+test-planet
+test-starscape
+test-texture
+test/*.o
