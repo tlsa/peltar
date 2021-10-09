@@ -9,9 +9,13 @@ static inline uint32_t texture_starscape_star(const struct point_3d p,
 		uint32_t seed)
 {
 	uint32_t ret = 0;
-	uint8_t texture;
+	uint32_t texture;
+	uint32_t density;
 
 	texture = noise_random(p.x, p.y, p.z, seed) >> 24;
+	density = noise_get_value_at_pos_standard_range_2d(p, seed, 8, 4) >> 24;
+
+	texture += ((density > 128) ? density - 128 : 128 - density) / 2;
 
 	if (texture < 0x01)
 		ret += 0x90 + (0xa0 << 8) + (0x90 << 16);
