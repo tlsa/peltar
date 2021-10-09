@@ -1,8 +1,10 @@
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <time.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <inttypes.h>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -21,15 +23,35 @@
 
 #define WIDTH 1300
 #define HEIGHT 700
+#define MIN_SIZE 400
 
 struct peltar_config peltar_opts;
 
+static bool read_u32(
+		const char *value,
+		uint32_t *out)
+{
+	unsigned long long temp;
+	char *end = NULL;
+
+	errno = 0;
+	temp = strtoull(value, &end, 0);
+
+	if (end == value || errno == ERANGE || temp > INT32_MAX) {
+		return false;
+	}
+
+	*out = (uint32_t)temp;
+	return true;
+}
 
 static void cli_parse(int argc, char* argv[])
 {
 	int i;
 
 	for (i = 1; i < argc; i++) {
+		uint32_t val;
+
 		if (*argv[i]++ != '-') {
 			/* Only interested in stuff starting with '-' */
 			continue;
@@ -37,12 +59,19 @@ static void cli_parse(int argc, char* argv[])
 		if (*argv[i] == 'f') {
 			peltar_opts.fullscreen = true;
 		}
-		if (*argv[i] == 'w') {
-			peltar_opts.screen_width = atoi(++argv[i]);
+		if (*argv[i] == 'w' && read_u32(++argv[i], &val)) {
+			peltar_opts.screen_width = val;
 		}
-		if (*argv[i] == 'h') {
-			peltar_opts.screen_height = atoi(++argv[i]);
+		if (*argv[i] == 'h' && read_u32(++argv[i], &val)) {
+			peltar_opts.screen_height = val;
 		}
+	}
+
+	if (peltar_opts.screen_width < MIN_SIZE) {
+		peltar_opts.screen_width = MIN_SIZE;
+	}
+	if (peltar_opts.screen_height < MIN_SIZE) {
+		peltar_opts.screen_height = MIN_SIZE;
 	}
 }
 
