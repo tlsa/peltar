@@ -8,6 +8,8 @@ ship.  Missiles are affected by the gravity of the intervening planets.  It
 is based on a game I played when I was much younger, although I can't remember
 its name.
 
+![Peltar screenshot](https://repository-images.githubusercontent.com/415364809/75c1dfef-ab2a-42e3-9ef4-18559ae0aa8a)
+
 It was developed on Linux in C using SDL.
 
 Why?
