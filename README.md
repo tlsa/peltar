@@ -8,7 +8,7 @@ ship.  Missiles are affected by the gravity of the intervening planets.  It
 is based on a game I played when I was much younger, although I can't remember
 its name.
 
-It was developed on Linux in C using SDL2.
+It was developed on Linux in C using SDL.
 
 Why?
 ----
