@@ -50,7 +50,7 @@ You can run in fullscreen mode with the `-f` command line flag.
 The window width/height can also be set via the command line:
 
 ```
-./peltar -w 800 -h 600
+./peltar -w800 -h600
 ```
 
 Playing
