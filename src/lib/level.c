@@ -448,7 +448,7 @@ static bool level_create_details(struct level *level, int width, int height)
 	 */
 
 	/* Find a total for all planet diameters */
-	total_diameter = (11 * ((width + height) / 2) / 8) / 8;
+	total_diameter = (7 * ((width + height) / 2) / 8) / 8;
 
 	/* Number of planets */
 	level->nplanets = MIN_PLANETS + rand() %
@@ -458,11 +458,7 @@ static bool level_create_details(struct level *level, int width, int height)
 			level->nplanets * min_size) / 16;
 
 	for (i = 0; i < level->nplanets; i++) {
-		sizes[i] = rand() % 128;
-		if (sizes[i] >= 128 - 32)
-			sizes[i] -= 32;
-		else if (sizes[i] >= 128 - 64)
-			sizes[i] -= 64;
+		sizes[i] = rand() % 64;
 		total += sizes[i];
 	}
 
