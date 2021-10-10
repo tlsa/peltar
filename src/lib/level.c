@@ -716,8 +716,8 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 					l->planet_pos[i][LEV_SIZE_SCALED] / 2,
 				&planet_lx, &planet_ly);
 
-		distance_x = (planet_lx - point_lx) / 2;
-		distance_y = (planet_ly - point_ly) / 2;
+		distance_x = (planet_lx - point_lx);
+		distance_y = (planet_ly - point_ly);
 
 		distance2 = distance_x * distance_x + distance_y * distance_y;
 		distance2 = (distance2 == 0) ? 1 : distance2;
@@ -727,7 +727,7 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 		//TODO: avoid floating point / sqrt
 		distance = sqrt(distance2);
 
-		if (distance <= l->planet_pos[i][LEV_SIZE] / 4)
+		if (distance <= l->planet_pos[i][LEV_SIZE] / 2)
 			return true;
 
 		x += a * distance_x / distance;
