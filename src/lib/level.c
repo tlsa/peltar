@@ -709,10 +709,9 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 	for (i = 0; i < l->nplanets; i++) {
 		int planet_lx, planet_ly;
 		int distance_x, distance_y, distance2;
-		int mass = l->planet_pos[i][LEV_SIZE_SCALED] / 2;
-		int a;
+		int64_t mass = l->planet_mass[i];
 		int distance;
-		mass = mass * mass * mass;
+		int a;
 
 		level_screen_scaled_to_level(
 				l->planet_pos[i][LEV_X_SCALED] +
