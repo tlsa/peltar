@@ -150,6 +150,40 @@ static inline void draw_target_7x7(SDL_Surface *screen, int x, int y,
 	*pixel = colour;
 }
 
+static inline void draw_line(SDL_Surface *screen,
+		int x0, int y0, int x1, int y1,
+		uint32_t colour)
+{
+	const int sx = (x0 < x1) ? 1 : -1;
+	const int sy = (y0 < y1) ? 1 : -1;
+	const int dx =  abs(x1 - x0);
+	const int dy = -abs(y1 - y0);
+	const int y_step = screen->pitch / peltar_opts.screen_bpp;
+	uint32_t *pixel = (uint32_t*)screen->pixels + y0 * y_step + x0;
+	int err = dx + dy;
+	int err2;
+
+	while (true) {
+		*pixel = colour;
+
+		if (x0 == x1 && y0 == y1) {
+			break;
+		}
+
+		err2 = err * 2;
+		if (err2 >= dy) {
+			err += dy;
+			x0 += sx;
+			pixel += sx;
+		}
+
+		if (err2 <= dx) {
+			err += dx;
+			y0 += sy;
+			pixel += sy * y_step;
+		}
+	}
+}
 
 static inline void draw_h_line(SDL_Surface *screen, int x, int y, int len,
 		uint32_t colour)
