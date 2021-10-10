@@ -68,6 +68,7 @@ struct level {
 	int nplanets;
 	struct planet **planets;
 	int planet_pos[MAX_PLANETS][LEV_LAST];
+	int planet_mass[MAX_PLANETS];
 
 	struct player *p1;
 	struct player *p2;
@@ -499,6 +500,7 @@ static bool level_create_details(struct level *level, int width, int height)
 				planet_get_size(level->planets[i]);
 		level->planet_pos[i][LEV_SIZE_SCALED] =
 				planet_get_size_scaled(level->planets[i]);
+		level->planet_mass[i] = planet_get_mass(level->planets[i]);
 
 		level_set_scaled_pos(level->planet_pos[i],
 				level->width, level->height);
