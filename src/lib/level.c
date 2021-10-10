@@ -68,6 +68,7 @@ struct level {
 	int nplanets;
 	struct planet **planets;
 	int planet_pos[MAX_PLANETS][LEV_LAST];
+	int planet_mass[MAX_PLANETS];
 
 	struct player *p1;
 	struct player *p2;
@@ -447,7 +448,7 @@ static bool level_create_details(struct level *level, int width, int height)
 	 */
 
 	/* Find a total for all planet diameters */
-	total_diameter = (11 * ((width + height) / 2) / 8) / 8;
+	total_diameter = (7 * ((width + height) / 2) / 8) / 8;
 
 	/* Number of planets */
 	level->nplanets = MIN_PLANETS + rand() %
@@ -457,11 +458,7 @@ static bool level_create_details(struct level *level, int width, int height)
 			level->nplanets * min_size) / 16;
 
 	for (i = 0; i < level->nplanets; i++) {
-		sizes[i] = rand() % 128;
-		if (sizes[i] >= 128 - 32)
-			sizes[i] -= 32;
-		else if (sizes[i] >= 128 - 64)
-			sizes[i] -= 64;
+		sizes[i] = rand() % 64;
 		total += sizes[i];
 	}
 
@@ -499,6 +496,7 @@ static bool level_create_details(struct level *level, int width, int height)
 				planet_get_size(level->planets[i]);
 		level->planet_pos[i][LEV_SIZE_SCALED] =
 				planet_get_size_scaled(level->planets[i]);
+		level->planet_mass[i] = planet_get_mass(level->planets[i]);
 
 		level_set_scaled_pos(level->planet_pos[i],
 				level->width, level->height);
@@ -707,10 +705,9 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 	for (i = 0; i < l->nplanets; i++) {
 		int planet_lx, planet_ly;
 		int distance_x, distance_y, distance2;
-		int mass = l->planet_pos[i][LEV_SIZE_SCALED] / 2;
-		int a;
+		int64_t mass = l->planet_mass[i];
 		int distance;
-		mass = mass * mass * mass;
+		int a;
 
 		level_screen_scaled_to_level(
 				l->planet_pos[i][LEV_X_SCALED] +
@@ -719,20 +716,19 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 					l->planet_pos[i][LEV_SIZE_SCALED] / 2,
 				&planet_lx, &planet_ly);
 
-		distance_x = (planet_lx - point_lx) / 2;
-		distance_y = (planet_ly - point_ly) / 2;
+		distance_x = (planet_lx - point_lx);
+		distance_y = (planet_ly - point_ly);
 
 		distance2 = distance_x * distance_x + distance_y * distance_y;
 		distance2 = (distance2 == 0) ? 1 : distance2;
 
-		a = (mass << LEVEL_FIX_SHIFT) / distance2;
-
 		//TODO: avoid floating point / sqrt
 		distance = sqrt(distance2);
 
-		if (distance <= l->planet_pos[i][LEV_SIZE] / 4)
+		if (distance <= l->planet_pos[i][LEV_SIZE] / 2)
 			return true;
 
+		a = (mass << LEVEL_FIX_SHIFT) / distance2;
 		x += a * distance_x / distance;
 		y += a * distance_y / distance;
 	}

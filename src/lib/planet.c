@@ -20,6 +20,8 @@
 #define M_PI	3.14159265358979323846
 #endif
 
+#define PLANET_DENSITY_NUM 2
+#define PLANET_DENSITY_DEN 16
 
 #define LUT_MAX_SETTING 10
 #define LUT_MAX (1 << LUT_MAX_SETTING)
@@ -969,6 +971,15 @@ int planet_get_size(const struct planet *p)
 int planet_get_size_scaled(const struct planet *p)
 {
 	return p->small.size;
+}
+
+int planet_get_mass(const struct planet *p)
+{
+	int radius = p->big.size / 2;
+	int volume = (4 * M_PI * radius * radius * radius) / 3;
+	int mass = volume * PLANET_DENSITY_NUM / PLANET_DENSITY_DEN;
+
+	return mass;
 }
 
 void planet_set_lighting(struct planet *p, bool lighting)

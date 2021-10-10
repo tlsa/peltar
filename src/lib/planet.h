@@ -33,5 +33,7 @@ void planet_set_lighting(struct planet *p, bool lighting);
 int planet_get_size(const struct planet *p);
 int planet_get_size_scaled(const struct planet *p);
 
+int planet_get_mass(const struct planet *p);
+
 #endif
 
