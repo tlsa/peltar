@@ -1,6 +1,5 @@
 
 #include <assert.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -15,6 +14,7 @@
 #include "image.h"
 #include "texture/starscape.h"
 #include "types.h"
+#include "util.h"
 
 #define MAX_PLANETS 5
 #define MIN_PLANETS 3
@@ -689,8 +689,6 @@ static void level_update_render_turn_borders(
  * vx	updated to x value of gravity vector
  * vy	updated to y value of gravity vector
  * return true iff projectile hit a planet
- *
- * TODO: Optimise
  */
 static inline bool level_get_gravity_vector_at_point(struct level *l,
 		peltar_fixed px, peltar_fixed py, int *vx, int *vy)
@@ -704,7 +702,7 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 
 	for (i = 0; i < l->nplanets; i++) {
 		int planet_lx, planet_ly;
-		int distance_x, distance_y, distance2;
+		int distance_x, distance_y;
 		int64_t mass = l->planet_mass[i];
 		int distance;
 		int a;
@@ -719,16 +717,12 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 		distance_x = (planet_lx - point_lx);
 		distance_y = (planet_ly - point_ly);
 
-		distance2 = distance_x * distance_x + distance_y * distance_y;
-		distance2 = (distance2 == 0) ? 1 : distance2;
-
-		//TODO: avoid floating point / sqrt
-		distance = sqrt(distance2);
+		distance = peltar_hypot(distance_x, distance_y);
 
 		if (distance <= l->planet_pos[i][LEV_SIZE] / 2)
 			return true;
 
-		a = (mass << LEVEL_FIX_SHIFT) / distance2;
+		a = (mass << LEVEL_FIX_SHIFT) / (distance * distance);
 		x += a * distance_x / distance;
 		y += a * distance_y / distance;
 	}
