@@ -16,11 +16,17 @@
 #include "types.h"
 #include "util.h"
 
-#define MAX_PLANETS 5
-#define MIN_PLANETS 3
+#define PLANETS_MAX 5
+#define PLANETS_MIN 3
 
 #define LEVEL_FIX_SHIFT (FIX_SHIFT - 3)
 #define LEVEL_FIX_OFFSET ((1 << FIX_SHIFT) >> 1)
+
+enum players {
+	PLAYERS_1,
+	PLAYERS_2,
+	PLAYERS_MAX,
+};
 
 enum level_flags {
 	LEV_LIGHTING		= (1 << 0),
@@ -30,16 +36,6 @@ enum level_flags {
 	LEV_SCALE_CHANGED	= (1 << 4),
 	LEV_STRENGTH_CHANGED	= (1 << 5),
 	LEV_NEED_REDRAW_FULL	= (1 << 6)
-};
-
-enum level_pos {
-	LEV_X = 0,
-	LEV_Y,
-	LEV_X_SCALED,
-	LEV_Y_SCALED,
-	LEV_SIZE,
-	LEV_SIZE_SCALED,
-	LEV_LAST
 };
 
 enum state {
@@ -62,19 +58,29 @@ struct projectile {
 	uint32_t colour;
 };
 
+struct asset_pos {
+	int x;
+	int y;
+	int size;
+};
+
+struct level_scale_pos {
+	struct asset_pos planet[PLANETS_MAX];
+	struct asset_pos player[PLAYERS_MAX];
+};
+
 struct level {
 	struct projectile proj;
 
 	int nplanets;
 	struct planet **planets;
-	int planet_pos[MAX_PLANETS][LEV_LAST];
-	int planet_mass[MAX_PLANETS];
+	int planet_mass[PLANETS_MAX];
 
-	struct player *p1;
-	struct player *p2;
-	int player_pos[2][LEV_LAST];
-	uint32_t p1_col;
-	uint32_t p2_col;
+	struct level_scale_pos normal;
+	struct level_scale_pos scaled;
+
+	struct player *p[PLAYERS_MAX];
+	uint32_t colour[PLAYERS_MAX];
 
 	struct image *background;
 
@@ -113,7 +119,6 @@ static inline bool flag_get_all(uint32_t flags, enum level_flags get_all_flags)
 	return get_all_flags == (flags & get_all_flags);
 }
 
-
 /* Coordinate conversion */
 static inline void level_fixed_to_level(peltar_fixed fx, peltar_fixed fy,
 			int *x, int *y)
@@ -122,7 +127,6 @@ static inline void level_fixed_to_level(peltar_fixed fx, peltar_fixed fy,
 	*y = (fy - LEVEL_FIX_OFFSET) >> LEVEL_FIX_SHIFT;
 }
 
-
 /* Coordinate conversion */
 static inline void level_level_to_fixed(int x, int y,
 		peltar_fixed *fx, peltar_fixed *fy)
@@ -130,7 +134,6 @@ static inline void level_level_to_fixed(int x, int y,
 	*fx = LEVEL_FIX_OFFSET + (x << LEVEL_FIX_SHIFT);
 	*fy = LEVEL_FIX_OFFSET + (y << LEVEL_FIX_SHIFT);
 }
-
 
 /* Coordinate conversion */
 static inline void level_level_to_screen(struct level *l,
@@ -141,7 +144,6 @@ static inline void level_level_to_screen(struct level *l,
 	*y = ly - 3 * l->height / 2;
 }
 
-
 /* Coordinate conversion */
 static inline void level_screen_to_level(struct level *l,
 		int x, int y, int *lx, int *ly)
@@ -150,7 +152,6 @@ static inline void level_screen_to_level(struct level *l,
 	*lx = 3 * l->width / 2 + x;
 	*ly = 3 * l->height / 2 + y;
 }
-
 
 /* Coordinate conversion */
 static inline void level_level_to_screen_scaled(
@@ -161,7 +162,6 @@ static inline void level_level_to_screen_scaled(
 	*y = ly / 4;
 }
 
-
 /* Coordinate conversion */
 static inline void level_screen_scaled_to_level(int x, int y,
 		int *lx, int *ly)
@@ -171,19 +171,17 @@ static inline void level_screen_scaled_to_level(int x, int y,
 	*ly = y * 4;
 }
 
-
 void level_init(void)
 {
 	planet_init();
 }
 
-
-static void level_p1_fire(struct level *l)
+static void level_player_fire(struct level *l, int player)
 {
 	int x, y;
-	player_get_target(l->p1, &l->proj.x, &l->proj.y,
+	player_get_target(l->p[player], &l->proj.x, &l->proj.y,
 			&l->proj.vector_x, &l->proj.vector_y);
-	l->proj.colour = player_get_colour(l->p1);
+	l->proj.colour = l->colour[player];
 
 	if (flag_get(l->flags, LEV_SCALE)) {
 		level_screen_scaled_to_level(l->proj.x, l->proj.y, &x, &y);
@@ -193,8 +191,8 @@ static void level_p1_fire(struct level *l)
 
 	level_level_to_fixed(x, y, &(l->proj.px), &(l->proj.py));
 
-	l->proj.vector_x *= 16 + player_get_strength(l->p1);
-	l->proj.vector_y *= 16 + player_get_strength(l->p1);
+	l->proj.vector_x *= 16 + player_get_strength(l->p[player]);
+	l->proj.vector_y *= 16 + player_get_strength(l->p[player]);
 
 	if (flag_get(l->flags, LEV_SCALE)) {
 		/* Scale strength */
@@ -204,35 +202,6 @@ static void level_p1_fire(struct level *l)
 
 	return;
 }
-
-
-static void level_p2_fire(struct level *l)
-{
-	int x, y;
-	player_get_target(l->p2, &l->proj.x, &l->proj.y,
-			&l->proj.vector_x, &l->proj.vector_y);
-	l->proj.colour = player_get_colour(l->p2);
-
-	if (flag_get(l->flags, LEV_SCALE)) {
-		level_screen_scaled_to_level(l->proj.x, l->proj.y, &x, &y);
-	} else {
-		level_screen_to_level(l, l->proj.x, l->proj.y, &x, &y);
-	}
-
-	level_level_to_fixed(x, y, &l->proj.px, &l->proj.py);
-
-	l->proj.vector_x *= 16 + player_get_strength(l->p2);
-	l->proj.vector_y *= 16 + player_get_strength(l->p2);
-
-	if (flag_get(l->flags, LEV_SCALE)) {
-		/* Scale strength */
-		l->proj.vector_x *= 4;
-		l->proj.vector_y *= 4;
-	}
-
-	return;
-}
-
 
 static void level_set_state(struct level *l, enum state s)
 {
@@ -244,29 +213,29 @@ static void level_set_state(struct level *l, enum state s)
 		assert(l->state == LEVEL_START ||
 				l->state == TURN_SHOW_P2);
 
-		player_set_mouse_pos_to_target(l->p1);
-		player_show_direction(l->p1, true);
+		player_set_mouse_pos_to_target(l->p[PLAYERS_1]);
+		player_show_direction(l->p[PLAYERS_1], true);
 		break;
 
 	case TURN_SHOW_P1:
 		assert(l->state == TURN_GET_P1_INPUT);
 		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
-		player_show_direction(l->p1, false);
-		level_p1_fire(l);
+		player_show_direction(l->p[PLAYERS_1], false);
+		level_player_fire(l, PLAYERS_1);
 		break;
 
 	case TURN_GET_P2_INPUT:
 		assert(l->state == TURN_SHOW_P1);
 
-		player_set_mouse_pos_to_target(l->p2);
-		player_show_direction(l->p2, true);
+		player_set_mouse_pos_to_target(l->p[PLAYERS_2]);
+		player_show_direction(l->p[PLAYERS_2], true);
 		break;
 
 	case TURN_SHOW_P2:
 		assert(l->state == TURN_GET_P2_INPUT);
 		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
-		player_show_direction(l->p2, false);
-		level_p2_fire(l);
+		player_show_direction(l->p[PLAYERS_2], false);
+		level_player_fire(l, PLAYERS_2);
 		break;
 
 	case LEVEL_WIN_P1:
@@ -280,12 +249,10 @@ static void level_set_state(struct level *l, enum state s)
 	l->state = s;
 }
 
-
 void level_begin(struct level *l)
 {
 	level_set_state(l, TURN_GET_P1_INPUT);
 }
-
 
 int level_get_winner(struct level *l)
 {
@@ -298,7 +265,6 @@ int level_get_winner(struct level *l)
 		return -1;
 	}
 }
-
 
 static bool level_too_close(int x1, int y1, int r1,
 		int x2, int y2, int r2)
@@ -322,15 +288,18 @@ int compare_int(const void *a, const void *b)
 	return *(int *)b - *(int *)a;
 }
 
-static void level_set_scaled_pos(int pos[LEV_LAST], int width, int height)
+static void level_set_scaled_pos(
+		const struct asset_pos *orig,
+		struct asset_pos *scaled,
+		int width, int height)
 {
-	pos[LEV_X_SCALED] = (pos[LEV_X] + pos[LEV_SIZE] / 2) / 4 +
-			(width - width / 4) / 2 - pos[LEV_SIZE_SCALED] / 2;
-	pos[LEV_Y_SCALED] = (pos[LEV_Y] + pos[LEV_SIZE] / 2) / 4 +
-			(height - height / 4) / 2 - pos[LEV_SIZE_SCALED] / 2;
+	scaled->x= (orig->x + orig->size / 2) / 4 + (width - width / 4) / 2 -
+			scaled->size / 2;
+	scaled->y = (orig->y + orig->size / 2) / 4 + (height - height / 4) / 2 -
+			scaled->size / 2;
 }
 
-void level_arrange_planets(int sizes[MAX_PLANETS], int size,
+void level_arrange_planets(int sizes[PLANETS_MAX], int size,
 		struct level *level, int width, int height)
 {
 	int i, j;
@@ -339,36 +308,38 @@ void level_arrange_planets(int sizes[MAX_PLANETS], int size,
 	i = 0;
 	while (i < level->nplanets) {
 		/* place planet */
-		level->planet_pos[i][0] = sizes[i] / 2 +  2 * width / 16 +
+		level->normal.planet[i].x = sizes[i] / 2 +  2 * width / 16 +
 				rand() % (12 * width / 16 - sizes[i]);
-		level->planet_pos[i][1] = sizes[i] / 2 + height / 16 +
+		level->normal.planet[i].y = sizes[i] / 2 + height / 16 +
 				rand() % (14 * height / 16 - sizes[i]);
 
 		ok = true;
 		/* Check placed planets */
 		for (j = 0; j < i; j++) {
-			if (level_too_close(level->planet_pos[i][LEV_X],
-					level->planet_pos[i][LEV_Y],
+			if (level_too_close(level->normal.planet[i].x,
+					level->normal.planet[i].y,
 					sizes[i] / 2,
-					level->planet_pos[j][LEV_X],
-					level->planet_pos[j][LEV_Y],
+					level->normal.planet[j].x,
+					level->normal.planet[j].y,
 					sizes[j] / 2)) {
 				ok = false;
 				break;
 			}
 		}
 		/* Check players */
-		if (level_too_close(level->planet_pos[i][LEV_X],
-				level->planet_pos[i][LEV_Y],
+		if (level_too_close(
+				level->normal.planet[i].x,
+				level->normal.planet[i].y,
 				sizes[i] / 2,
-				level->player_pos[0][LEV_X] + size / 2,
-				level->player_pos[0][LEV_Y] + size / 2,
+				level->normal.player[0].x + size / 2,
+				level->normal.player[0].y + size / 2,
 				size / 2) ||
-		    level_too_close(level->planet_pos[i][LEV_X],
-				level->planet_pos[i][LEV_Y],
+		    level_too_close(
+				level->normal.planet[i].x,
+				level->normal.planet[i].y,
 				sizes[i] / 2,
-				level->player_pos[1][LEV_X] + size / 2,
-				level->player_pos[1][LEV_Y] + size / 2,
+				level->normal.player[1].x + size / 2,
+				level->normal.player[1].y + size / 2,
 				size / 2)) {
 			ok = false;
 		}
@@ -378,37 +349,50 @@ void level_arrange_planets(int sizes[MAX_PLANETS], int size,
 	}
 
 	for (i = 0; i < level->nplanets; i++) {
-		level->planet_pos[i][0] -= sizes[i] / 2;
-		level->planet_pos[i][1] -= sizes[i] / 2;
+		level->normal.planet[i].x -= sizes[i] / 2;
+		level->normal.planet[i].y -= sizes[i] / 2;
 	}
 }
 
-
-static bool level_player_setup(struct player *p, int pos[LEV_LAST], int size,
-		struct level *l)
+static bool level_player_setup(struct level *level,
+		int width, int height, int player_size)
 {
-	if (!player_setup_graphics(p, size)) {
-		return false;
+	level->normal.player[PLAYERS_1].x = 1 * player_size / 4;
+	level->normal.player[PLAYERS_2].x = width - 5 * player_size / 4;
+
+	for (int i = 0; i < PLAYERS_MAX; i++) {
+		struct player *p = level->p[i];
+
+		if (!player_setup_graphics(p, player_size)) {
+			return false;
+		}
+
+		level->normal.player[i].y = height / 2 - player_size / 2;
+		level->normal.player[i].size = player_get_size(p);
+		level->scaled.player[i].size = player_get_size_scaled(p);
+
+		level_set_scaled_pos(
+				&level->normal.player[i],
+				&level->scaled.player[i],
+				level->width, level->height);
+
+		player_set_pos(p,
+				level->normal.player[i].x,
+				level->normal.player[i].y,
+				level->scaled.player[i].x,
+				level->scaled.player[i].y);
+
+		player_set_lighting(p, flag_get(level->flags, LEV_LIGHTING));
+		player_set_target(p, width / 2, height / 2);
 	}
-
-	pos[LEV_SIZE] = player_get_size(p);
-	pos[LEV_SIZE_SCALED] = player_get_size_scaled(p);
-
-	level_set_scaled_pos(pos, l->width, l->height);
-
-	player_set_pos(p, pos[LEV_X], pos[LEV_Y],
-			pos[LEV_X_SCALED], pos[LEV_Y_SCALED]);
-
-	player_set_lighting(p, flag_get(l->flags, LEV_LIGHTING));
 
 	return true;
 }
 
-
 static bool level_create_details(struct level *level, int width, int height)
 {
 	int i;
-	int sizes[MAX_PLANETS]; /* max no of planets */
+	int sizes[PLANETS_MAX]; /* max no of planets */
 	int total_diameter;
 	int total = 0;
 	int min_size = (((width + height) / 2) / 8) / 4;
@@ -423,25 +407,9 @@ static bool level_create_details(struct level *level, int width, int height)
 		return false;
 	}
 
-	/* Player 1 */
-	level->player_pos[0][LEV_X] = 1 * player_size / 4;
-	level->player_pos[0][LEV_Y] = height / 2 - player_size / 2;
-
-	if (!level_player_setup(level->p1, level->player_pos[0],
-			player_size, level)) {
+	if (!level_player_setup(level, width, height, player_size)) {
 		return false;
 	}
-	player_set_target(level->p1, width / 2, height / 2);
-
-	/* Player 2 */
-	level->player_pos[1][LEV_X] = width - 5 * player_size / 4;
-	level->player_pos[1][LEV_Y] = height / 2 - player_size / 2;
-
-	if (!level_player_setup(level->p2, level->player_pos[1],
-			player_size, level)) {
-		return false;
-	}
-	player_set_target(level->p2, width / 2, height / 2);
 
 	/*
 	 * Create random number of randomly sized planets in random places
@@ -451,10 +419,10 @@ static bool level_create_details(struct level *level, int width, int height)
 	total_diameter = (7 * ((width + height) / 2) / 8) / 8;
 
 	/* Number of planets */
-	level->nplanets = MIN_PLANETS + rand() %
-			(MAX_PLANETS - MIN_PLANETS + 1);
+	level->nplanets = PLANETS_MIN + rand() %
+			(PLANETS_MAX - PLANETS_MIN + 1);
 
-	total_diameter -= ((16 + MIN_PLANETS - level->nplanets) *
+	total_diameter -= ((16 + PLANETS_MIN - level->nplanets) *
 			level->nplanets * min_size) / 16;
 
 	for (i = 0; i < level->nplanets; i++) {
@@ -492,19 +460,18 @@ static bool level_create_details(struct level *level, int width, int height)
 		planet_set_lighting(level->planets[i],
 				flag_get(level->flags, LEV_LIGHTING));
 
-		level->planet_pos[i][LEV_SIZE] =
-				planet_get_size(level->planets[i]);
-		level->planet_pos[i][LEV_SIZE_SCALED] =
-				planet_get_size_scaled(level->planets[i]);
+		level->normal.planet[i].size = planet_get_size(level->planets[i]);
+		level->scaled.planet[i].size = planet_get_size_scaled(level->planets[i]);
 		level->planet_mass[i] = planet_get_mass(level->planets[i]);
 
-		level_set_scaled_pos(level->planet_pos[i],
+		level_set_scaled_pos(
+				&level->normal.planet[i],
+				&level->scaled.planet[i],
 				level->width, level->height);
 	}
 
 	return true;
 }
-
 
 void level_free(struct level *level)
 {
@@ -523,7 +490,6 @@ void level_free(struct level *level)
 	free(level);
 }
 
-
 bool level_create(struct level **level, struct player *p1, struct player *p2,
 		int width, int height)
 {
@@ -531,11 +497,11 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	if (*level == NULL)
 		return false;
 
-	(*level)->p1 = p1;
-	(*level)->p2 = p2;
+	(*level)->p[PLAYERS_1] = p1;
+	(*level)->p[PLAYERS_2] = p2;
 
-	(*level)->p1_col = player_get_colour(p1);
-	(*level)->p2_col = player_get_colour(p2);
+	(*level)->colour[PLAYERS_1] = player_get_colour(p1);
+	(*level)->colour[PLAYERS_2] = player_get_colour(p2);
 
 	(*level)->planets = NULL;
 	(*level)->background = NULL;
@@ -552,29 +518,15 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	return true;
 }
 
-
 static inline void level_remove_object(SDL_Surface *screen, SDL_Surface *bg,
-		SDL_Rect *rect1, SDL_Rect *rect2, int pos[LEV_LAST])
+		SDL_Rect *rect1, SDL_Rect *rect2, struct asset_pos *pos)
 {
-	rect1->x = rect2->x = pos[LEV_X];
-	rect1->y = rect2->y = pos[LEV_Y];
-	rect2->w = rect2->h = pos[LEV_SIZE];
+	rect1->x = rect2->x = pos->x;
+	rect1->y = rect2->y = pos->y;
+	rect2->w = rect2->h = pos->size;
 
 	SDL_BlitSurface(bg, rect2, screen, rect1);
 }
-
-
-static inline void level_remove_object_scaled(SDL_Surface *screen,
-		SDL_Surface *bg, SDL_Rect *rect1, SDL_Rect *rect2,
-		int pos[LEV_LAST])
-{
-	rect1->x = rect2->x = pos[LEV_X_SCALED];
-	rect1->y = rect2->y = pos[LEV_Y_SCALED];
-	rect2->w = rect2->h = pos[LEV_SIZE_SCALED];
-
-	SDL_BlitSurface(bg, rect2, screen, rect1);
-}
-
 
 static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
 		int x, int y, int w, int h)
@@ -604,7 +556,6 @@ static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
 	SDL_BlitSurface(bg, &rect2, screen, &rect1);
 }
 
-
 static void level_update_render_scale_clearance(
 		struct level *l, SDL_Surface *screen)
 {
@@ -621,28 +572,26 @@ static void level_update_render_scale_clearance(
 	if (flag_get(l->flags, LEV_SCALE)) {
 		/* Changed to scaled out view */
 		for (i = 0; i < l->nplanets; i++) {
-			level_remove_object(screen, bg,
-					&rect1, &rect2, l->planet_pos[i]);
+			level_remove_object(screen, bg, &rect1, &rect2,
+					&l->normal.planet[i]);
 		}
-		level_remove_object(screen, bg,
-				&rect1, &rect2, l->player_pos[0]);
-
-		level_remove_object(screen, bg,
-				&rect1, &rect2, l->player_pos[1]);
+		for (i = 0; i < PLAYERS_MAX; i++) {
+			level_remove_object(screen, bg, &rect1, &rect2,
+					&l->normal.player[i]);
+		}
 
 		draw_box(screen, 3 * l->width / 8, 3 * l->height / 8,
 				l->width / 4, l->height / 4, 0x00ffffff);
 	} else {
 		/* Changed to normal view */
 		for (i = 0; i < l->nplanets; i++) {
-			level_remove_object_scaled(screen, bg,
-					&rect1, &rect2, l->planet_pos[i]);
+			level_remove_object(screen, bg, &rect1, &rect2,
+					&l->scaled.planet[i]);
 		}
-		level_remove_object_scaled(screen, bg,
-				&rect1, &rect2, l->player_pos[0]);
-
-		level_remove_object_scaled(screen, bg,
-				&rect1, &rect2, l->player_pos[1]);
+		for (i = 0; i < PLAYERS_MAX; i++) {
+			level_remove_object(screen, bg, &rect1, &rect2,
+					&l->scaled.player[i]);
+		}
 
 		level_remove_box(screen, bg,
 				3 * l->width / 8, 3 * l->height / 8,
@@ -650,17 +599,18 @@ static void level_update_render_scale_clearance(
 	}
 }
 
-
 static void level_update_render_turn_borders(
 		struct level *l, SDL_Surface *screen)
 {
 	switch (l->state) {
 	case TURN_GET_P1_INPUT:
-		draw_box(screen, 0, 0, l->width - 1, l->height - 1, l->p1_col);
+		draw_box(screen, 0, 0, l->width - 1, l->height - 1,
+				l->colour[PLAYERS_1]);
 		return;
 
 	case TURN_GET_P2_INPUT:
-		draw_box(screen, 0, 0, l->width - 1, l->height - 1, l->p2_col);
+		draw_box(screen, 0, 0, l->width - 1, l->height - 1,
+				l->colour[PLAYERS_2]);
 		return;
 
 	default:
@@ -678,7 +628,6 @@ static void level_update_render_turn_borders(
 		break;
 	}
 }
-
 
 /*
  * Find the gravity vector at a certain point on the level
@@ -708,10 +657,10 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 		int a;
 
 		level_screen_scaled_to_level(
-				l->planet_pos[i][LEV_X_SCALED] +
-					l->planet_pos[i][LEV_SIZE_SCALED] / 2,
-				l->planet_pos[i][LEV_Y_SCALED] +
-					l->planet_pos[i][LEV_SIZE_SCALED] / 2,
+				l->scaled.planet[i].x +
+					l->scaled.planet[i].size / 2,
+				l->scaled.planet[i].y +
+					l->scaled.planet[i].size / 2,
 				&planet_lx, &planet_ly);
 
 		distance_x = (planet_lx - point_lx);
@@ -719,7 +668,7 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 
 		distance = peltar_hypot(distance_x, distance_y);
 
-		if (distance <= l->planet_pos[i][LEV_SIZE] / 2)
+		if (distance <= l->normal.planet[i].size / 2)
 			return true;
 
 		a = (mass << LEVEL_FIX_SHIFT) / (distance * distance);
@@ -733,19 +682,17 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 	return false;
 }
 
-
-static bool level_has_hit_player(struct level *l, int pos[LEV_LAST])
+static bool level_has_hit_player(struct level *l, struct asset_pos *pos)
 {
-	int r = pos[LEV_SIZE] / 2;
-	int x = l->proj.x - (pos[LEV_X] + r);
-	int y = l->proj.y - (pos[LEV_Y] + r);
+	int r = pos->size / 2;
+	int x = l->proj.x - (pos->x + r);
+	int y = l->proj.y - (pos->y + r);
 
 	if ((x * x) + (y * y) < (r * r))
 		return true;
 
 	return false;
 }
-
 
 static void level_update_projectile(struct level *l, SDL_Surface *screen)
 {
@@ -870,13 +817,13 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		if (flag_get(l->flags, LEV_SCALE))
 			return;
 
-		if (level_has_hit_player(l, l->player_pos[0])) {
+		if (level_has_hit_player(l, &l->normal.player[PLAYERS_1])) {
 			/* Hit player 1 */
 			level_set_state(l, LEVEL_WIN_P2);
 			return;
 		}
 
-		if (level_has_hit_player(l, l->player_pos[1])) {
+		if (level_has_hit_player(l, &l->normal.player[PLAYERS_2])) {
 			/* Hit player 2 */
 			level_set_state(l, LEVEL_WIN_P1);
 			return;
@@ -885,7 +832,6 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 	return;
 }
-
 
 bool level_update_render(struct level *l, SDL_Surface *screen)
 {
@@ -922,11 +868,11 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 		int height = l->height / 64;
 
 		if (l->state == TURN_GET_P1_INPUT)
-			player_render_strength(l->p1, screen,
+			player_render_strength(l->p[PLAYERS_1], screen,
 					l->width / 4,
 					l->height / 64, width, height);
 		else
-			player_render_strength(l->p2, screen,
+			player_render_strength(l->p[PLAYERS_2], screen,
 					l->width / 4,
 					l->height / 64, width, height);
 
@@ -956,11 +902,11 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 		/* Not showing animations */
 
 		if (flag_get(l->flags, LEV_SCALE)) {
-			player_render_direction_scaled(l->p1, screen, bg);
-			player_render_direction_scaled(l->p2, screen, bg);
+			player_render_direction_scaled(l->p[PLAYERS_1], screen, bg);
+			player_render_direction_scaled(l->p[PLAYERS_2], screen, bg);
 		} else {
-			player_render_direction(l->p1, screen, bg);
-			player_render_direction(l->p2, screen, bg);
+			player_render_direction(l->p[PLAYERS_1], screen, bg);
+			player_render_direction(l->p[PLAYERS_2], screen, bg);
 		}
 
 		l->prev_render_state = l->state;
@@ -975,19 +921,19 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 	if (flag_get(l->flags, LEV_SCALE)) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
-					l->planet_pos[i][LEV_X_SCALED],
-					l->planet_pos[i][LEV_Y_SCALED]);
+					l->scaled.planet[i].x,
+					l->scaled.planet[i].y);
 		}
-		player_update_render_scaled(l->p1, screen, bg);
-		player_update_render_scaled(l->p2, screen, bg);
+		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
+		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render(l->planets[i], screen,
-					l->planet_pos[i][LEV_X],
-					l->planet_pos[i][LEV_Y]);
+					l->normal.planet[i].x,
+					l->normal.planet[i].y);
 		}
-		player_update_render(l->p1, screen, bg);
-		player_update_render(l->p2, screen, bg);
+		player_update_render(l->p[PLAYERS_1], screen, bg);
+		player_update_render(l->p[PLAYERS_2], screen, bg);
 	}
 
 	if (flag_get(l->flags, LEV_SCALE_CHANGED))
@@ -1005,7 +951,6 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 	return false;
 }
 
-
 bool level_update_render_full(struct level *l, SDL_Surface *screen)
 {
 	int i;
@@ -1016,11 +961,13 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 
 	switch (l->state) {
 	case TURN_GET_P1_INPUT:
-		draw_box(screen, 0, 0, l->width - 1, l->height - 1, l->p1_col);
+		draw_box(screen, 0, 0, l->width - 1, l->height - 1,
+				l->colour[PLAYERS_1]);
 		break;
 
 	case TURN_GET_P2_INPUT:
-		draw_box(screen, 0, 0, l->width - 1, l->height - 1, l->p2_col);
+		draw_box(screen, 0, 0, l->width - 1, l->height - 1,
+				l->colour[PLAYERS_2]);
 		break;
 
 	default:
@@ -1030,19 +977,19 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 	if (flag_get(l->flags, LEV_SCALE)) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
-					l->planet_pos[i][LEV_X_SCALED],
-					l->planet_pos[i][LEV_Y_SCALED]);
+					l->scaled.planet[i].x,
+					l->scaled.planet[i].y);
 		}
-		player_update_render_scaled(l->p1, screen, bg);
-		player_update_render_scaled(l->p2, screen, bg);
+		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
+		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render(l->planets[i], screen,
-					l->planet_pos[i][LEV_X],
-					l->planet_pos[i][LEV_Y]);
+					l->normal.planet[i].x,
+					l->normal.planet[i].y);
 		}
-		player_update_render(l->p1, screen, bg);
-		player_update_render(l->p2, screen, bg);
+		player_update_render(l->p[PLAYERS_1], screen, bg);
+		player_update_render(l->p[PLAYERS_2], screen, bg);
 	}
 
 	l->prev_render_state = l->state;
@@ -1053,7 +1000,6 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 
 	return false;
 }
-
 
 bool level_handle_key(struct level *l, SDL_Event *event)
 {
@@ -1069,8 +1015,8 @@ bool level_handle_key(struct level *l, SDL_Event *event)
 			planet_set_lighting(l->planets[i],
 					flag_get(l->flags, LEV_LIGHTING));
 		}
-		player_set_lighting(l->p1, flag_get(l->flags, LEV_LIGHTING));
-		player_set_lighting(l->p2, flag_get(l->flags, LEV_LIGHTING));
+		player_set_lighting(l->p[PLAYERS_1], flag_get(l->flags, LEV_LIGHTING));
+		player_set_lighting(l->p[PLAYERS_2], flag_get(l->flags, LEV_LIGHTING));
 
 		flag_set(&l->flags, LEV_NEED_REDRAW);
 		/* Handled keypress */
@@ -1120,7 +1066,6 @@ bool level_handle_key(struct level *l, SDL_Event *event)
 	return false;
 }
 
-
 bool level_handle_mouse(struct level *l, SDL_Event *event)
 {
 	assert(event->type == SDL_MOUSEMOTION ||
@@ -1130,11 +1075,11 @@ bool level_handle_mouse(struct level *l, SDL_Event *event)
 	switch (event->type) {
 	case SDL_MOUSEMOTION:
 		if (l->state == TURN_GET_P1_INPUT) {
-			player_set_target(l->p1,
+			player_set_target(l->p[PLAYERS_1],
 					event->motion.x, event->motion.y);
 
 		} else if (l->state == TURN_GET_P2_INPUT) {
-			player_set_target(l->p2,
+			player_set_target(l->p[PLAYERS_2],
 					event->motion.x, event->motion.y);
 		}
 
@@ -1143,13 +1088,13 @@ bool level_handle_mouse(struct level *l, SDL_Event *event)
 	case SDL_MOUSEBUTTONDOWN:
 		if (event->button.button == SDL_BUTTON_LEFT) {
 			if (l->state == TURN_GET_P1_INPUT) {
-				player_set_target(l->p1,
+				player_set_target(l->p[PLAYERS_1],
 						event->button.x,
 						event->button.y);
 				level_set_state(l, TURN_SHOW_P1);
 
 			} else if (l->state == TURN_GET_P2_INPUT) {
-				player_set_target(l->p2,
+				player_set_target(l->p[PLAYERS_2],
 						event->button.x,
 						event->button.y);
 				level_set_state(l, TURN_SHOW_P2);
@@ -1158,19 +1103,19 @@ bool level_handle_mouse(struct level *l, SDL_Event *event)
 
 		if (event->button.button == SDL_BUTTON_WHEELUP) {
 			if (l->state == TURN_GET_P1_INPUT) {
-				player_increase_strength(l->p1);
+				player_increase_strength(l->p[PLAYERS_1]);
 
 			} else if (l->state == TURN_GET_P2_INPUT) {
-				player_increase_strength(l->p2);
+				player_increase_strength(l->p[PLAYERS_2]);
 			}
 		}
 
 		if (event->button.button == SDL_BUTTON_WHEELDOWN) {
 			if (l->state == TURN_GET_P1_INPUT) {
-				player_reduce_strength(l->p1);
+				player_reduce_strength(l->p[PLAYERS_1]);
 
 			} else if (l->state == TURN_GET_P2_INPUT) {
-				player_reduce_strength(l->p2);
+				player_reduce_strength(l->p[PLAYERS_2]);
 			}
 		}
 
