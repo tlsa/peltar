@@ -28,6 +28,12 @@ enum players {
 	PLAYERS_MAX,
 };
 
+enum level_scale {
+	NORMAL,
+	SCALED,
+	SCALE_COUNT,
+};
+
 enum level_flags {
 	LEV_LIGHTING		= (1 << 0),
 	LEV_NEED_REDRAW		= (1 << 1),
@@ -64,11 +70,6 @@ struct asset_pos {
 	int size;
 };
 
-struct asset_pos_scaled {
-	struct asset_pos normal;
-	struct asset_pos scaled;
-};
-
 struct level {
 	struct projectile proj;
 
@@ -76,8 +77,8 @@ struct level {
 	struct planet **planets;
 	int planet_mass[PLANETS_MAX];
 
-	struct asset_pos_scaled planet[PLANETS_MAX];
-	struct asset_pos_scaled player[PLAYERS_MAX];
+	struct asset_pos planet[PLANETS_MAX][SCALE_COUNT];
+	struct asset_pos player[PLAYERS_MAX][SCALE_COUNT];
 
 	struct player *p[PLAYERS_MAX];
 	uint32_t colour[PLAYERS_MAX];
@@ -308,19 +309,20 @@ void level_arrange_planets(int sizes[PLANETS_MAX], int size,
 	i = 0;
 	while (i < level->nplanets) {
 		/* place planet */
-		level->planet[i].normal.x = sizes[i] / 2 +  2 * width / 16 +
+		level->planet[i][NORMAL].x = sizes[i] / 2 +  2 * width / 16 +
 				rand() % (12 * width / 16 - sizes[i]);
-		level->planet[i].normal.y = sizes[i] / 2 + height / 16 +
+		level->planet[i][NORMAL].y = sizes[i] / 2 + height / 16 +
 				rand() % (14 * height / 16 - sizes[i]);
 
 		ok = true;
 		/* Check placed planets */
 		for (j = 0; j < i; j++) {
-			if (level_too_close(level->planet[i].normal.x,
-					level->planet[i].normal.y,
+			if (level_too_close(
+					level->planet[i][NORMAL].x,
+					level->planet[i][NORMAL].y,
 					sizes[i] / 2,
-					level->planet[j].normal.x,
-					level->planet[j].normal.y,
+					level->planet[j][NORMAL].x,
+					level->planet[j][NORMAL].y,
 					sizes[j] / 2)) {
 				ok = false;
 				break;
@@ -328,18 +330,18 @@ void level_arrange_planets(int sizes[PLANETS_MAX], int size,
 		}
 		/* Check players */
 		if (level_too_close(
-				level->planet[i].normal.x,
-				level->planet[i].normal.y,
+				level->planet[i][NORMAL].x,
+				level->planet[i][NORMAL].y,
 				sizes[i] / 2,
-				level->player[0].normal.x + size / 2,
-				level->player[0].normal.y + size / 2,
+				level->player[0][NORMAL].x + size / 2,
+				level->player[0][NORMAL].y + size / 2,
 				size / 2) ||
 		    level_too_close(
-				level->planet[i].normal.x,
-				level->planet[i].normal.y,
+				level->planet[i][NORMAL].x,
+				level->planet[i][NORMAL].y,
 				sizes[i] / 2,
-				level->player[1].normal.x + size / 2,
-				level->player[1].normal.y + size / 2,
+				level->player[1][NORMAL].x + size / 2,
+				level->player[1][NORMAL].y + size / 2,
 				size / 2)) {
 			ok = false;
 		}
@@ -349,16 +351,16 @@ void level_arrange_planets(int sizes[PLANETS_MAX], int size,
 	}
 
 	for (i = 0; i < level->nplanets; i++) {
-		level->planet[i].normal.x -= sizes[i] / 2;
-		level->planet[i].normal.y -= sizes[i] / 2;
+		level->planet[i][NORMAL].x -= sizes[i] / 2;
+		level->planet[i][NORMAL].y -= sizes[i] / 2;
 	}
 }
 
 static bool level_player_setup(struct level *level,
 		int width, int height, int player_size)
 {
-	level->player[PLAYERS_1].normal.x = 1 * player_size / 4;
-	level->player[PLAYERS_2].normal.x = width - 5 * player_size / 4;
+	level->player[PLAYERS_1][NORMAL].x = 1 * player_size / 4;
+	level->player[PLAYERS_2][NORMAL].x = width - 5 * player_size / 4;
 
 	for (int i = 0; i < PLAYERS_MAX; i++) {
 		struct player *p = level->p[i];
@@ -367,20 +369,20 @@ static bool level_player_setup(struct level *level,
 			return false;
 		}
 
-		level->player[i].normal.y = height / 2 - player_size / 2;
-		level->player[i].normal.size = player_get_size(p);
-		level->player[i].scaled.size = player_get_size_scaled(p);
+		level->player[i][NORMAL].y = height / 2 - player_size / 2;
+		level->player[i][NORMAL].size = player_get_size(p);
+		level->player[i][SCALED].size = player_get_size_scaled(p);
 
 		level_set_scaled_pos(
-				&level->player[i].normal,
-				&level->player[i].scaled,
+				&level->player[i][NORMAL],
+				&level->player[i][SCALED],
 				level->width, level->height);
 
 		player_set_pos(p,
-				level->player[i].normal.x,
-				level->player[i].normal.y,
-				level->player[i].scaled.x,
-				level->player[i].scaled.y);
+				level->player[i][NORMAL].x,
+				level->player[i][NORMAL].y,
+				level->player[i][SCALED].x,
+				level->player[i][SCALED].y);
 
 		player_set_lighting(p, flag_get(level->flags, LEV_LIGHTING));
 		player_set_target(p, width / 2, height / 2);
@@ -460,13 +462,13 @@ static bool level_create_details(struct level *level, int width, int height)
 		planet_set_lighting(level->planets[i],
 				flag_get(level->flags, LEV_LIGHTING));
 
-		level->planet[i].normal.size = planet_get_size(level->planets[i]);
-		level->planet[i].scaled.size = planet_get_size_scaled(level->planets[i]);
+		level->planet[i][NORMAL].size = planet_get_size(level->planets[i]);
+		level->planet[i][SCALED].size = planet_get_size_scaled(level->planets[i]);
 		level->planet_mass[i] = planet_get_mass(level->planets[i]);
 
 		level_set_scaled_pos(
-				&level->planet[i].normal,
-				&level->planet[i].scaled,
+				&level->planet[i][NORMAL],
+				&level->planet[i][SCALED],
 				level->width, level->height);
 	}
 
@@ -573,11 +575,11 @@ static void level_update_render_scale_clearance(
 		/* Changed to scaled out view */
 		for (i = 0; i < l->nplanets; i++) {
 			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->planet[i].normal);
+					&l->planet[i][NORMAL]);
 		}
 		for (i = 0; i < PLAYERS_MAX; i++) {
 			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->player[i].normal);
+					&l->player[i][NORMAL]);
 		}
 
 		draw_box(screen, 3 * l->width / 8, 3 * l->height / 8,
@@ -586,11 +588,11 @@ static void level_update_render_scale_clearance(
 		/* Changed to normal view */
 		for (i = 0; i < l->nplanets; i++) {
 			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->planet[i].scaled);
+					&l->planet[i][SCALED]);
 		}
 		for (i = 0; i < PLAYERS_MAX; i++) {
 			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->player[i].scaled);
+					&l->player[i][SCALED]);
 		}
 
 		level_remove_box(screen, bg,
@@ -657,10 +659,10 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 		int a;
 
 		level_screen_scaled_to_level(
-				l->planet[i].scaled.x +
-					l->planet[i].scaled.size / 2,
-				l->planet[i].scaled.y +
-					l->planet[i].scaled.size / 2,
+				l->planet[i][SCALED].x +
+					l->planet[i][SCALED].size / 2,
+				l->planet[i][SCALED].y +
+					l->planet[i][SCALED].size / 2,
 				&planet_lx, &planet_ly);
 
 		distance_x = (planet_lx - point_lx);
@@ -668,7 +670,7 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 
 		distance = peltar_hypot(distance_x, distance_y);
 
-		if (distance <= l->planet[i].normal.size / 2)
+		if (distance <= l->planet[i][NORMAL].size / 2)
 			return true;
 
 		a = (mass << LEVEL_FIX_SHIFT) / (distance * distance);
@@ -817,13 +819,13 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		if (flag_get(l->flags, LEV_SCALE))
 			return;
 
-		if (level_has_hit_player(l, &l->player[PLAYERS_1].normal)) {
+		if (level_has_hit_player(l, &l->player[PLAYERS_1][NORMAL])) {
 			/* Hit player 1 */
 			level_set_state(l, LEVEL_WIN_P2);
 			return;
 		}
 
-		if (level_has_hit_player(l, &l->player[PLAYERS_2].normal)) {
+		if (level_has_hit_player(l, &l->player[PLAYERS_2][NORMAL])) {
 			/* Hit player 2 */
 			level_set_state(l, LEVEL_WIN_P1);
 			return;
@@ -921,16 +923,16 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 	if (flag_get(l->flags, LEV_SCALE)) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
-					l->planet[i].scaled.x,
-					l->planet[i].scaled.y);
+					l->planet[i][SCALED].x,
+					l->planet[i][SCALED].y);
 		}
 		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
 		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render(l->planets[i], screen,
-					l->planet[i].normal.x,
-					l->planet[i].normal.y);
+					l->planet[i][NORMAL].x,
+					l->planet[i][NORMAL].y);
 		}
 		player_update_render(l->p[PLAYERS_1], screen, bg);
 		player_update_render(l->p[PLAYERS_2], screen, bg);
@@ -977,16 +979,16 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 	if (flag_get(l->flags, LEV_SCALE)) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
-					l->planet[i].scaled.x,
-					l->planet[i].scaled.y);
+					l->planet[i][SCALED].x,
+					l->planet[i][SCALED].y);
 		}
 		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
 		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render(l->planets[i], screen,
-					l->planet[i].normal.x,
-					l->planet[i].normal.y);
+					l->planet[i][NORMAL].x,
+					l->planet[i][NORMAL].y);
 		}
 		player_update_render(l->p[PLAYERS_1], screen, bg);
 		player_update_render(l->p[PLAYERS_2], screen, bg);
