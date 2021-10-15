@@ -25,4 +25,9 @@ static inline int peltar_hypot(int dx, int dy)
 #endif
 }
 
+static inline int peltar_round_up_n(int value, int n)
+{
+	return (value + n - 1) / n * n;
+}
+
 #endif
