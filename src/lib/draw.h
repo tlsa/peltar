@@ -188,6 +188,35 @@ static inline void draw_line(SDL_Surface *screen,
 	}
 }
 
+static inline void draw_bitmap_1bpp(SDL_Surface *screen,
+		int width, int height,
+		int row_stride, uint32_t *data,
+		uint32_t colour)
+{
+	const int y_step = screen->pitch / peltar_opts.screen_bpp;
+	uint32_t *row = screen->pixels;
+
+	for (int y = 0; y < height; y++) {
+		uint32_t *pixel = row;
+		for (int x = 0; x < row_stride; x++) {
+			if (data[x] == 0) {
+				pixel += 32;
+				continue;
+			}
+
+			for (int i = 0; i < 32; i++) {
+				if (data[x] & (1u << i)) {
+					*pixel = colour;
+				}
+				pixel++;
+			}
+		}
+
+		row += y_step;
+		data += row_stride;
+	}
+}
+
 static inline void draw_h_line(SDL_Surface *screen, int x, int y, int len,
 		uint32_t colour)
 {
