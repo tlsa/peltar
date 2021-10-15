@@ -83,7 +83,7 @@ struct level {
 	struct player *p[PLAYERS_MAX];
 	uint32_t colour[PLAYERS_MAX];
 
-	struct image *background;
+	struct image *background[SCALE_COUNT];
 
 	int width; /* Width of level */
 	int height; /* Height of level */
@@ -118,6 +118,22 @@ static inline bool flag_get(uint32_t flags, enum level_flags get_flags)
 static inline bool flag_get_all(uint32_t flags, enum level_flags get_all_flags)
 {
 	return get_all_flags == (flags & get_all_flags);
+}
+
+static inline enum level_scale level_get_scale(const struct level *l)
+{
+	bool zoomed_out = flag_get(l->flags, LEV_SCALE);
+	return zoomed_out ? NORMAL : SCALED;
+}
+
+static inline struct image *level_get_bg(const struct level *l)
+{
+	return l->background[level_get_scale(l)];
+}
+
+static inline SDL_Surface *level_get_bg_surface(const struct level *l)
+{
+	return image_get_surface(level_get_bg(l));
 }
 
 /* Coordinate conversion */
@@ -405,7 +421,13 @@ static bool level_create_details(struct level *level, int width, int height)
 	level->height = height;
 
 	/* Get background starscape */
-	if (!image_create(&level->background, width, height)) {
+	if (!image_create(&level->background[NORMAL], width, height)) {
+		return false;
+	}
+
+	/* Get background starscape */
+	if (!image_clone(level->background[NORMAL],
+			&level->background[SCALED])) {
 		return false;
 	}
 
@@ -486,8 +508,13 @@ void level_free(struct level *level)
 		free(level->planets);
 	}
 
-	if (level->background != NULL)
-		image_free(level->background);
+	if (level->background[NORMAL] != NULL) {
+		image_free(level->background[NORMAL]);
+	}
+
+	if (level->background[SCALED] != NULL) {
+		image_free(level->background[SCALED]);
+	}
 
 	free(level);
 }
@@ -506,7 +533,8 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	(*level)->colour[PLAYERS_2] = player_get_colour(p2);
 
 	(*level)->planets = NULL;
-	(*level)->background = NULL;
+	(*level)->background[NORMAL] = NULL;
+	(*level)->background[SCALED] = NULL;
 	(*level)->nplanets = 0;
 	(*level)->state = LEVEL_START;
 
@@ -518,16 +546,6 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	}
 
 	return true;
-}
-
-static inline void level_remove_object(SDL_Surface *screen, SDL_Surface *bg,
-		SDL_Rect *rect1, SDL_Rect *rect2, struct asset_pos *pos)
-{
-	rect1->x = rect2->x = pos->x;
-	rect1->y = rect2->y = pos->y;
-	rect2->w = rect2->h = pos->size;
-
-	SDL_BlitSurface(bg, rect2, screen, rect1);
 }
 
 static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
@@ -561,43 +579,16 @@ static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
 static void level_update_render_scale_clearance(
 		struct level *l, SDL_Surface *screen)
 {
-	int i;
-	SDL_Surface *bg = image_get_surface(l->background);
-	SDL_Rect rect1 = {
-		.x = 0,
-		.y = 0,
-		.w = 0,
-		.h = 0
-	};
-	SDL_Rect rect2;
-
 	if (flag_get(l->flags, LEV_SCALE)) {
 		/* Changed to scaled out view */
-		for (i = 0; i < l->nplanets; i++) {
-			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->planet[i][NORMAL]);
-		}
-		for (i = 0; i < PLAYERS_MAX; i++) {
-			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->player[i][NORMAL]);
-		}
-
+		SDL_Surface *bg = image_get_surface(l->background[NORMAL]);
+		SDL_BlitSurface(bg, NULL, screen, NULL);
 		draw_box(screen, 3 * l->width / 8, 3 * l->height / 8,
 				l->width / 4, l->height / 4, 0x00ffffff);
 	} else {
 		/* Changed to normal view */
-		for (i = 0; i < l->nplanets; i++) {
-			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->planet[i][SCALED]);
-		}
-		for (i = 0; i < PLAYERS_MAX; i++) {
-			level_remove_object(screen, bg, &rect1, &rect2,
-					&l->player[i][SCALED]);
-		}
-
-		level_remove_box(screen, bg,
-				3 * l->width / 8, 3 * l->height / 8,
-				l->width / 4, l->height / 4);
+		SDL_Surface *bg = image_get_surface(l->background[SCALED]);
+		SDL_BlitSurface(bg, NULL, screen, NULL);
 	}
 }
 
@@ -622,7 +613,7 @@ static void level_update_render_turn_borders(
 	switch (l->prev_render_state) {
 	case TURN_GET_P1_INPUT:
 	case TURN_GET_P2_INPUT:
-		level_remove_box(screen, image_get_surface(l->background),
+		level_remove_box(screen, level_get_bg_surface(l),
 				0, 0, l->width - 1, l->height - 1);
 		return;
 
@@ -705,7 +696,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	if (l->prev_render_state == TURN_SHOW_P1 ||
 			l->prev_render_state == TURN_SHOW_P2) {
 		/* Remove shot from prev. frame */
-		SDL_Surface *bg = image_get_surface(l->background);
+		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect1 = {
 			.x = l->proj.x - 1,
 			.y = l->proj.y - 1,
@@ -738,6 +729,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		} else {
 			level_set_state(l, TURN_GET_P1_INPUT);
 		}
+		level_update_render_scale_clearance(l, screen);
 
 	} else {
 		int min_x, min_y, max_x, max_y;
@@ -793,6 +785,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			} else {
 				level_set_state(l, TURN_GET_P1_INPUT);
 			}
+			level_update_render_scale_clearance(l, screen);
 
 			/* Return to unscaled view */
 			if (flag_get(l->flags, LEV_SCALE)) {
@@ -838,10 +831,10 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 bool level_update_render(struct level *l, SDL_Surface *screen)
 {
 	int i;
-	SDL_Surface *bg = image_get_surface(l->background);
+	SDL_Surface *bg = level_get_bg_surface(l);
 
 	if (flag_get(l->flags, LEV_NEED_REDRAW_FULL)) {
-		SDL_BlitSurface(image_get_surface(l->background),
+		SDL_BlitSurface(level_get_bg_surface(l),
 				NULL, screen, NULL);
 		flag_toggle(&l->flags, LEV_NEED_REDRAW_FULL);
 	}
@@ -883,7 +876,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 			l->state != TURN_GET_P2_INPUT) {
 		int width = l->width / 2;
 		int height = l->height / 64;
-		SDL_Surface *bg = image_get_surface(l->background);
+		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect1 = {
 			.x = l->width / 4,
 			.y = l->height / 64,
@@ -926,6 +919,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 					l->planet[i][SCALED].x,
 					l->planet[i][SCALED].y);
 		}
+		SDL_Surface *bg = level_get_bg_surface(l);
 		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
 		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
@@ -934,6 +928,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 					l->planet[i][NORMAL].x,
 					l->planet[i][NORMAL].y);
 		}
+		SDL_Surface *bg = level_get_bg_surface(l);
 		player_update_render(l->p[PLAYERS_1], screen, bg);
 		player_update_render(l->p[PLAYERS_2], screen, bg);
 	}
@@ -956,10 +951,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 bool level_update_render_full(struct level *l, SDL_Surface *screen)
 {
 	int i;
-	SDL_Surface *bg = image_get_surface(l->background);
-
-	SDL_BlitSurface(image_get_surface(l->background),
-			NULL, screen, NULL);
+	SDL_BlitSurface(level_get_bg_surface(l), NULL, screen, NULL);
 
 	switch (l->state) {
 	case TURN_GET_P1_INPUT:
@@ -982,6 +974,7 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 					l->planet[i][SCALED].x,
 					l->planet[i][SCALED].y);
 		}
+		SDL_Surface *bg = level_get_bg_surface(l);
 		player_update_render_scaled(l->p[PLAYERS_1], screen, bg);
 		player_update_render_scaled(l->p[PLAYERS_2], screen, bg);
 	} else {
@@ -990,6 +983,7 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 					l->planet[i][NORMAL].x,
 					l->planet[i][NORMAL].y);
 		}
+		SDL_Surface *bg = level_get_bg_surface(l);
 		player_update_render(l->p[PLAYERS_1], screen, bg);
 		player_update_render(l->p[PLAYERS_2], screen, bg);
 	}
@@ -1052,7 +1046,7 @@ bool level_handle_key(struct level *l, SDL_Event *event)
 
 	case SDLK_b:
 		/* 'B' key: redo background starscape */
-		if (!texture_get_starscape(l->background)) {
+		if (!texture_get_starscape(level_get_bg(l))) {
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}
