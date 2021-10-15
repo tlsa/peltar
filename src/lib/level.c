@@ -734,7 +734,8 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 	} else {
 		int min_x, min_y, max_x, max_y;
-		int min_x_scaled, min_y_scaled, max_x_scaled, max_y_scaled;
+		int min_x_scaled, min_y_scaled;
+		int max_x_scaled, max_y_scaled;
 
 		/* Update projectile position */
 		l->proj.px += grav_x / 16 + l->proj.vector_x;
@@ -757,7 +758,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 		/* Check whether projectile is within bounds */
 		if (proj_pos_x > min_x && proj_pos_x < max_x &&
-				proj_pos_y > min_y && proj_pos_y < max_y) {
+		    proj_pos_y > min_y && proj_pos_y < max_y) {
 			/* Within full scale area; ensure not scaled view */
 			if (zoomed_out) {
 				/* Need to toggled to unscaled */
@@ -767,9 +768,9 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				level_update_render_scale_clearance(l, screen);
 			}
 		} else if (proj_pos_x > min_x_scaled &&
-				proj_pos_x < max_x_scaled &&
-				proj_pos_y > min_y_scaled &&
-				proj_pos_y < max_y_scaled) {
+		           proj_pos_x < max_x_scaled &&
+		           proj_pos_y > min_y_scaled &&
+		           proj_pos_y < max_y_scaled) {
 			/* Within full scale area; ensure scaled view */
 			if (!zoomed_out) {
 				/* Need to toggled to scaled */
