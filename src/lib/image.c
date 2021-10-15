@@ -91,7 +91,7 @@ void image_free(struct image *image)
 {
 	assert(image != NULL);
 
-	if (image->render != NULL)	
+	if (image->render != NULL)
 		SDL_FreeSurface(image->render);
 
 	free(image);
