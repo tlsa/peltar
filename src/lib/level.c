@@ -692,6 +692,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	int proj_pos_x, proj_pos_y;
 	int grav_x, grav_y;
 	peltar_fixed prev_x, prev_y;
+	bool zoomed_out = flag_get(l->flags, LEV_SCALE);
 
 	if (l->prev_render_state == TURN_SHOW_P1 ||
 			l->prev_render_state == TURN_SHOW_P2) {
@@ -758,7 +759,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		if (proj_pos_x > min_x && proj_pos_x < max_x &&
 				proj_pos_y > min_y && proj_pos_y < max_y) {
 			/* Within full scale area; ensure not scaled view */
-			if (flag_get(l->flags, LEV_SCALE)) {
+			if (zoomed_out) {
 				/* Need to toggled to unscaled */
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
@@ -770,7 +771,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				proj_pos_y > min_y_scaled &&
 				proj_pos_y < max_y_scaled) {
 			/* Within full scale area; ensure scaled view */
-			if (!flag_get(l->flags, LEV_SCALE)) {
+			if (!zoomed_out) {
 				/* Need to toggled to scaled */
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
@@ -788,7 +789,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			level_update_render_scale_clearance(l, screen);
 
 			/* Return to unscaled view */
-			if (flag_get(l->flags, LEV_SCALE)) {
+			if (zoomed_out) {
 				/* Need to toggled to unscaled */
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
@@ -798,7 +799,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			return;
 		}
 
-		if (flag_get(l->flags, LEV_SCALE))
+		if (zoomed_out)
 			level_level_to_screen_scaled(proj_pos_x, proj_pos_y,
 					&l->proj.x, &l->proj.y);
 		else
@@ -808,8 +809,8 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		/* Render shot for this frame */
 		draw_shot_3x3(screen, l->proj.x, l->proj.y, l->proj.colour);
 
-		/* If scaled, can't hit planet, so escape */
-		if (flag_get(l->flags, LEV_SCALE))
+		/* If scaled, can't hit player, so escape */
+		if (zoomed_out)
 			return;
 
 		if (level_has_hit_player(l, &l->player[PLAYERS_1][NORMAL])) {
