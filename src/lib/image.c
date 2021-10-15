@@ -38,6 +38,32 @@ static bool image_create_details(struct image *image, int width, int height)
 	return true;
 }
 
+bool image_clone(
+		const struct image *orig,
+		struct image **image)
+{
+	int ret;
+
+	*image = malloc(sizeof(struct image));
+	if (*image == NULL)
+		return false;
+
+	(*image)->render = NULL;
+
+	if (!image_create_details(*image, orig->width, orig->height)) {
+		image_free(*image);
+		return false;
+	}
+
+	ret = SDL_BlitSurface(orig->render, NULL, (*image)->render, NULL);
+	if (ret != 0) {
+		image_free(*image);
+		return false;
+	}
+
+	return true;
+}
+
 
 bool image_create(struct image **image, int width, int height)
 {
