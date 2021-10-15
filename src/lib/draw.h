@@ -42,21 +42,24 @@ static inline void draw_shot_3x3(SDL_Surface *screen, int x, int y,
 	int y_step = screen->pitch / peltar_opts.screen_bpp;
 	uint32_t *pixel = (uint32_t*)screen->pixels + (y - 1) * y_step + x - 1;
 
-	*pixel++ = colour;
-	*pixel++ = colour;
-	*pixel = colour;
+	if (x >= 1 && x < screen->w - 2 &&
+	    y >= 1 && y < screen->h - 2) {
+		*pixel++ = colour;
+		*pixel++ = colour;
+		*pixel = colour;
 
-	pixel += y_step - 2;
+		pixel += y_step - 2;
 
-	*pixel++ = colour;
-	*pixel++ = colour;
-	*pixel = colour;
+		*pixel++ = colour;
+		*pixel++ = colour;
+		*pixel = colour;
 
-	pixel += y_step - 2;
+		pixel += y_step - 2;
 
-	*pixel++ = colour;
-	*pixel++ = colour;
-	*pixel = colour;
+		*pixel++ = colour;
+		*pixel++ = colour;
+		*pixel = colour;
+	}
 }
 
 /*                                         ## = 1 pixel
