@@ -51,7 +51,7 @@ void game_free(struct game *game)
 
 static bool game_create_details(struct game *game, int width, int height)
 {
-	if (!player_create(&game->p1, 0x000066ff)) {
+	if (!player_create(&game->p1, 0x000077ff)) {
 		return false;
 	}
 
