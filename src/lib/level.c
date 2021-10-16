@@ -745,6 +745,29 @@ static void level_remove_projectile(
 	}
 }
 
+static void level_end_turn(
+		struct level *l,
+		enum players player,
+		SDL_Surface *screen)
+{
+	trial_render(l->trails[SCALED],
+			image_get_surface(l->background[SCALED]),
+			blend_colour(l->colour[player], 0));
+	trail_clear(l->trails[SCALED]);
+	trial_render(l->trails[NORMAL],
+			image_get_surface(l->background[NORMAL]),
+			blend_colour(l->colour[player], 0));
+	trail_clear(l->trails[NORMAL]);
+
+	if (player == PLAYERS_1) {
+		level_set_state(l, TURN_GET_P2_INPUT);
+	} else {
+		level_set_state(l, TURN_GET_P1_INPUT);
+	}
+
+	level_render_whole_background(l, screen);
+}
+
 static void level_update_projectile(struct level *l, SDL_Surface *screen)
 {
 	int proj_pos_x, proj_pos_y;
@@ -767,22 +790,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	if (level_get_gravity_vector_at_point(l,
 			l->proj.px, l->proj.py, &grav_x, &grav_y)) {
 		/* Last frame we hit a planet! */
-		trial_render(l->trails[SCALED],
-				image_get_surface(l->background[SCALED]),
-				blend_colour(l->colour[player], 0));
-		trail_clear(l->trails[SCALED]);
-		trial_render(l->trails[NORMAL],
-				image_get_surface(l->background[NORMAL]),
-				blend_colour(l->colour[player], 0));
-		trail_clear(l->trails[NORMAL]);
-
-		if (player == PLAYERS_1) {
-			level_set_state(l, TURN_GET_P2_INPUT);
-
-		} else {
-			level_set_state(l, TURN_GET_P1_INPUT);
-		}
-		level_render_whole_background(l, screen);
+		level_end_turn(l, player, screen);
 
 	} else {
 		int min_x, min_y, max_x, max_y;
@@ -834,33 +842,13 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				level_render_whole_background(l, screen);
 			}
 		} else {
-			trial_render(l->trails[SCALED],
-					image_get_surface(l->background[SCALED]),
-					blend_colour(l->colour[player], 0));
-			trail_clear(l->trails[SCALED]);
-			trial_render(l->trails[NORMAL],
-					image_get_surface(l->background[NORMAL]),
-					blend_colour(l->colour[player], 0));
-			trail_clear(l->trails[NORMAL]);
-
-			/* Out of bounds; end turn */
-			if (player == PLAYERS_1) {
-				level_set_state(l, TURN_GET_P2_INPUT);
-
-			} else {
-				level_set_state(l, TURN_GET_P1_INPUT);
-			}
-			level_render_whole_background(l, screen);
-
 			/* Return to unscaled view */
 			if (zoomed_out) {
 				/* Need to toggled to unscaled */
 				scale_changed = true;
 				flag_toggle(&l->flags, LEV_SCALE);
-				/* Handle clearance to background for scale
-				 * change */
-				level_render_whole_background(l, screen);
 			}
+			level_end_turn(l, player, screen);
 			return;
 		}
 
