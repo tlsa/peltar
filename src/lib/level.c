@@ -738,8 +738,8 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		int max_x_scaled, max_y_scaled;
 
 		/* Update projectile position */
-		l->proj.px += grav_x / 16 + l->proj.vector_x;
-		l->proj.py += grav_y / 16 + l->proj.vector_y;
+		l->proj.px += grav_x / 32 + l->proj.vector_x;
+		l->proj.py += grav_y / 32 + l->proj.vector_y;
 		level_fixed_to_level(l->proj.px, l->proj.py,
 				&proj_pos_x, &proj_pos_y);
 
