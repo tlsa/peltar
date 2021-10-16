@@ -13,6 +13,7 @@
 #include "player.h"
 #include "image.h"
 #include "texture/starscape.h"
+#include "trail.h"
 #include "types.h"
 #include "util.h"
 
@@ -62,6 +63,8 @@ struct projectile {
 	int vector_x;
 	int vector_y;
 	uint32_t colour;
+	bool scale_changed;
+	int count;
 };
 
 struct asset_pos {
@@ -82,6 +85,8 @@ struct level {
 
 	struct player *p[PLAYERS_MAX];
 	uint32_t colour[PLAYERS_MAX];
+
+	trail_t *trails[PLAYERS_MAX][SCALE_COUNT];
 
 	struct image *background[SCALE_COUNT];
 
@@ -199,6 +204,7 @@ static void level_player_fire(struct level *l, int player)
 	player_get_target(l->p[player], &l->proj.x, &l->proj.y,
 			&l->proj.vector_x, &l->proj.vector_y);
 	l->proj.colour = l->colour[player];
+	l->proj.count = 0;
 
 	if (flag_get(l->flags, LEV_SCALE)) {
 		level_screen_scaled_to_level(l->proj.x, l->proj.y, &x, &y);
@@ -497,6 +503,16 @@ static bool level_create_details(struct level *level, int width, int height)
 	return true;
 }
 
+static void level_destroy_trails(struct level *level)
+{
+	if (level != NULL) {
+		trail_destroy(level->trails[PLAYERS_1][NORMAL]);
+		trail_destroy(level->trails[PLAYERS_1][SCALED]);
+		trail_destroy(level->trails[PLAYERS_2][NORMAL]);
+		trail_destroy(level->trails[PLAYERS_2][SCALED]);
+	}
+}
+
 void level_free(struct level *level)
 {
 	int i;
@@ -516,7 +532,26 @@ void level_free(struct level *level)
 		image_free(level->background[SCALED]);
 	}
 
+	level_destroy_trails(level);
 	free(level);
+}
+
+static bool level_create_trails(struct level *level, int width, int height)
+{
+	level->trails[PLAYERS_1][NORMAL] = trail_create(width, height);
+	level->trails[PLAYERS_1][SCALED] = trail_create(width, height);
+	level->trails[PLAYERS_2][NORMAL] = trail_create(width, height);
+	level->trails[PLAYERS_2][SCALED] = trail_create(width, height);
+
+	if (level->trails[PLAYERS_1][NORMAL] == NULL ||
+	    level->trails[PLAYERS_1][SCALED] == NULL ||
+	    level->trails[PLAYERS_2][NORMAL] == NULL ||
+	    level->trails[PLAYERS_2][SCALED] == NULL) {
+		level_destroy_trails(level);
+		return false;
+	}
+
+	return true;
 }
 
 bool level_create(struct level **level, struct player *p1, struct player *p2,
@@ -541,6 +576,11 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	(*level)->flags = LEV_LIGHTING | LEV_ANIMATION;
 
 	if (!level_create_details(*level, width, height)) {
+		level_free(*level);
+		return false;
+	}
+
+	if (!level_create_trails(*level, width, height)) {
 		level_free(*level);
 		return false;
 	}
@@ -692,7 +732,11 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	int proj_pos_x, proj_pos_y;
 	int grav_x, grav_y;
 	peltar_fixed prev_x, prev_y;
+	bool scale_changed = false;
 	bool zoomed_out = flag_get(l->flags, LEV_SCALE);
+	enum level_scale scale = zoomed_out ? NORMAL : SCALED;
+	enum players player = (l->state == TURN_SHOW_P1) ?
+			PLAYERS_1 : PLAYERS_2;
 
 	if (l->prev_render_state == TURN_SHOW_P1 ||
 			l->prev_render_state == TURN_SHOW_P2) {
@@ -719,12 +763,23 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 	prev_x = l->proj.px;
 	prev_y = l->proj.py;
+	int prev_screen_x = l->proj.x;
+	int prev_screen_y = l->proj.y;
 
 	/* Work out new shot position */
 	if (level_get_gravity_vector_at_point(l,
 			l->proj.px, l->proj.py, &grav_x, &grav_y)) {
 		/* Last frame we hit a planet! */
-		if (l->state == TURN_SHOW_P1) {
+		trial_render(l->trails[player][SCALED],
+				image_get_surface(l->background[SCALED]),
+				blend_colour(l->colour[player], 0));
+		trail_clear(l->trails[player][SCALED]);
+		trial_render(l->trails[player][NORMAL],
+				image_get_surface(l->background[NORMAL]),
+				blend_colour(l->colour[player], 0));
+		trail_clear(l->trails[player][NORMAL]);
+
+		if (player == PLAYERS_1) {
 			level_set_state(l, TURN_GET_P2_INPUT);
 
 		} else {
@@ -761,6 +816,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		    proj_pos_y > min_y && proj_pos_y < max_y) {
 			/* Within full scale area; ensure not scaled view */
 			if (zoomed_out) {
+				scale_changed = true;
 				/* Need to toggled to unscaled */
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
@@ -774,14 +830,24 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			/* Within full scale area; ensure scaled view */
 			if (!zoomed_out) {
 				/* Need to toggled to scaled */
+				scale_changed = true;
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
 				 * change */
 				level_update_render_scale_clearance(l, screen);
 			}
 		} else {
+			trial_render(l->trails[player][SCALED],
+					image_get_surface(l->background[SCALED]),
+					blend_colour(l->colour[player], 0));
+			trail_clear(l->trails[player][SCALED]);
+			trial_render(l->trails[player][NORMAL],
+					image_get_surface(l->background[NORMAL]),
+					blend_colour(l->colour[player], 0));
+			trail_clear(l->trails[player][NORMAL]);
+
 			/* Out of bounds; end turn */
-			if (l->state == TURN_SHOW_P1) {
+			if (player == PLAYERS_1) {
 				level_set_state(l, TURN_GET_P2_INPUT);
 
 			} else {
@@ -792,6 +858,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			/* Return to unscaled view */
 			if (zoomed_out) {
 				/* Need to toggled to unscaled */
+				scale_changed = true;
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
 				 * change */
@@ -808,7 +875,40 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 					&l->proj.x, &l->proj.y);
 
 		/* Render shot for this frame */
+		if (l->proj.count > 0 && l->proj.scale_changed == false) {
+			int minx, miny, maxx, maxy;
+			trail_draw(l->trails[player][scale],
+					prev_screen_x, prev_screen_y,
+					l->proj.x, l->proj.y);
+			trial_render(l->trails[player][scale],
+					image_get_surface(l->background[scale]),
+					l->colour[player]);
+			if (prev_screen_x < l->proj.x) {
+				minx = prev_screen_x;
+				maxx = l->proj.x;
+			} else {
+				maxx = prev_screen_x;
+				minx = l->proj.x;
+			}
+			if (prev_screen_y < l->proj.y) {
+				miny = prev_screen_y;
+				maxy = l->proj.y;
+			} else {
+				maxy = prev_screen_y;
+				miny = l->proj.y;
+			}
+			SDL_Rect r = {
+				.x = minx,
+				.y = miny,
+				.w = maxx - minx + 1,
+				.h = maxy - miny + 1,
+			};
+			SDL_BlitSurface(image_get_surface(l->background[scale]),
+					&r, screen, &r);
+		}
+		l->proj.scale_changed = scale_changed;
 		draw_shot_3x3(screen, l->proj.x, l->proj.y, l->proj.colour);
+		l->proj.count++;
 
 		/* If scaled, can't hit player, so escape */
 		if (zoomed_out)
