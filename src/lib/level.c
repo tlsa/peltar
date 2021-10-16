@@ -86,7 +86,7 @@ struct level {
 	struct player *p[PLAYERS_MAX];
 	uint32_t colour[PLAYERS_MAX];
 
-	trail_t *trails[PLAYERS_MAX][SCALE_COUNT];
+	trail_t *trails[SCALE_COUNT];
 
 	struct image *background[SCALE_COUNT];
 
@@ -506,10 +506,8 @@ static bool level_create_details(struct level *level, int width, int height)
 static void level_destroy_trails(struct level *level)
 {
 	if (level != NULL) {
-		trail_destroy(level->trails[PLAYERS_1][NORMAL]);
-		trail_destroy(level->trails[PLAYERS_1][SCALED]);
-		trail_destroy(level->trails[PLAYERS_2][NORMAL]);
-		trail_destroy(level->trails[PLAYERS_2][SCALED]);
+		trail_destroy(level->trails[NORMAL]);
+		trail_destroy(level->trails[SCALED]);
 	}
 }
 
@@ -538,15 +536,11 @@ void level_free(struct level *level)
 
 static bool level_create_trails(struct level *level, int width, int height)
 {
-	level->trails[PLAYERS_1][NORMAL] = trail_create(width, height);
-	level->trails[PLAYERS_1][SCALED] = trail_create(width, height);
-	level->trails[PLAYERS_2][NORMAL] = trail_create(width, height);
-	level->trails[PLAYERS_2][SCALED] = trail_create(width, height);
+	level->trails[NORMAL] = trail_create(width, height);
+	level->trails[SCALED] = trail_create(width, height);
 
-	if (level->trails[PLAYERS_1][NORMAL] == NULL ||
-	    level->trails[PLAYERS_1][SCALED] == NULL ||
-	    level->trails[PLAYERS_2][NORMAL] == NULL ||
-	    level->trails[PLAYERS_2][SCALED] == NULL) {
+	if (level->trails[NORMAL] == NULL ||
+	    level->trails[SCALED] == NULL) {
 		level_destroy_trails(level);
 		return false;
 	}
@@ -773,14 +767,14 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	if (level_get_gravity_vector_at_point(l,
 			l->proj.px, l->proj.py, &grav_x, &grav_y)) {
 		/* Last frame we hit a planet! */
-		trial_render(l->trails[player][SCALED],
+		trial_render(l->trails[SCALED],
 				image_get_surface(l->background[SCALED]),
 				blend_colour(l->colour[player], 0));
-		trail_clear(l->trails[player][SCALED]);
-		trial_render(l->trails[player][NORMAL],
+		trail_clear(l->trails[SCALED]);
+		trial_render(l->trails[NORMAL],
 				image_get_surface(l->background[NORMAL]),
 				blend_colour(l->colour[player], 0));
-		trail_clear(l->trails[player][NORMAL]);
+		trail_clear(l->trails[NORMAL]);
 
 		if (player == PLAYERS_1) {
 			level_set_state(l, TURN_GET_P2_INPUT);
@@ -840,14 +834,14 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				level_render_whole_background(l, screen);
 			}
 		} else {
-			trial_render(l->trails[player][SCALED],
+			trial_render(l->trails[SCALED],
 					image_get_surface(l->background[SCALED]),
 					blend_colour(l->colour[player], 0));
-			trail_clear(l->trails[player][SCALED]);
-			trial_render(l->trails[player][NORMAL],
+			trail_clear(l->trails[SCALED]);
+			trial_render(l->trails[NORMAL],
 					image_get_surface(l->background[NORMAL]),
 					blend_colour(l->colour[player], 0));
-			trail_clear(l->trails[player][NORMAL]);
+			trail_clear(l->trails[NORMAL]);
 
 			/* Out of bounds; end turn */
 			if (player == PLAYERS_1) {
@@ -880,10 +874,10 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		/* Render shot for this frame */
 		if (l->proj.count > 0 && l->proj.scale_changed == false) {
 			int minx, miny, maxx, maxy;
-			trail_draw(l->trails[player][scale],
+			trail_draw(l->trails[scale],
 					prev_screen_x, prev_screen_y,
 					l->proj.x, l->proj.y);
-			trial_render(l->trails[player][scale],
+			trial_render(l->trails[scale],
 					image_get_surface(l->background[scale]),
 					l->colour[player]);
 			if (prev_screen_x < l->proj.x) {
