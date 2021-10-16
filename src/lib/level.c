@@ -727,6 +727,30 @@ static bool level_has_hit_player(struct level *l, struct asset_pos *pos)
 	return false;
 }
 
+static void level_remove_projectile(
+		const struct level *l,
+		const struct projectile *p,
+		SDL_Surface *screen)
+{
+	if (l->prev_render_state == TURN_SHOW_P1 ||
+	    l->prev_render_state == TURN_SHOW_P2) {
+		SDL_Surface *bg = level_get_bg_surface(l);
+		SDL_Rect rect = {
+			.x = l->proj.x - 1,
+			.y = l->proj.y - 1,
+			.w = 3,
+			.h = 3
+		};
+		SDL_BlitSurface(bg, &rect, screen, &rect);
+
+		if (l->state != TURN_SHOW_P1 &&
+		    l->state != TURN_SHOW_P2) {
+			/* Nothing else to do */
+			return;
+		}
+	}
+}
+
 static void level_update_projectile(struct level *l, SDL_Surface *screen)
 {
 	int proj_pos_x, proj_pos_y;
@@ -738,28 +762,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	enum players player = (l->state == TURN_SHOW_P1) ?
 			PLAYERS_1 : PLAYERS_2;
 
-	if (l->prev_render_state == TURN_SHOW_P1 ||
-			l->prev_render_state == TURN_SHOW_P2) {
-		/* Remove shot from prev. frame */
-		SDL_Surface *bg = level_get_bg_surface(l);
-		SDL_Rect rect1 = {
-			.x = l->proj.x - 1,
-			.y = l->proj.y - 1,
-			.w = 0,
-			.h = 0
-		};
-		SDL_Rect rect2 = {
-			.x = l->proj.x - 1,
-			.y = l->proj.y - 1,
-			.w = 3,
-			.h = 3
-		};
-		SDL_BlitSurface(bg, &rect2, screen, &rect1);
-
-		if (l->state != TURN_SHOW_P1 && l->state != TURN_SHOW_P2)
-			/* Nothing else to do */
-			return;
-	}
+	level_remove_projectile(l, &l->proj, screen);
 
 	prev_x = l->proj.px;
 	prev_y = l->proj.py;
