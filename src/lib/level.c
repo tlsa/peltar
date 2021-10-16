@@ -616,7 +616,7 @@ static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
 	SDL_BlitSurface(bg, &rect2, screen, &rect1);
 }
 
-static void level_update_render_scale_clearance(
+static void level_render_whole_background(
 		struct level *l, SDL_Surface *screen)
 {
 	if (flag_get(l->flags, LEV_SCALE)) {
@@ -788,7 +788,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		} else {
 			level_set_state(l, TURN_GET_P1_INPUT);
 		}
-		level_update_render_scale_clearance(l, screen);
+		level_render_whole_background(l, screen);
 
 	} else {
 		int min_x, min_y, max_x, max_y;
@@ -824,7 +824,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
 				 * change */
-				level_update_render_scale_clearance(l, screen);
+				level_render_whole_background(l, screen);
 			}
 		} else if (proj_pos_x > min_x_scaled &&
 		           proj_pos_x < max_x_scaled &&
@@ -837,7 +837,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
 				 * change */
-				level_update_render_scale_clearance(l, screen);
+				level_render_whole_background(l, screen);
 			}
 		} else {
 			trial_render(l->trails[player][SCALED],
@@ -856,7 +856,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			} else {
 				level_set_state(l, TURN_GET_P1_INPUT);
 			}
-			level_update_render_scale_clearance(l, screen);
+			level_render_whole_background(l, screen);
 
 			/* Return to unscaled view */
 			if (zoomed_out) {
@@ -865,7 +865,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				flag_toggle(&l->flags, LEV_SCALE);
 				/* Handle clearance to background for scale
 				 * change */
-				level_update_render_scale_clearance(l, screen);
+				level_render_whole_background(l, screen);
 			}
 			return;
 		}
@@ -946,7 +946,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 
 	/* Handle clearance to background for scale change */
 	if (flag_get(l->flags, LEV_SCALE_CHANGED)) {
-		level_update_render_scale_clearance(l, screen);
+		level_render_whole_background(l, screen);
 	}
 
 	if (l->state == TURN_SHOW_P1 || l->state == TURN_SHOW_P2 ||
