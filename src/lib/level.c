@@ -65,7 +65,7 @@ struct projectile {
 	int vector_x;
 	int vector_y;
 	uint32_t colour;
-	bool scale_changed;
+	enum level_scale scale;
 	int count;
 };
 
@@ -782,8 +782,8 @@ static void level_remove_projectile(
 	    l->prev_render_state == TURN_SHOW_P2) {
 		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect = {
-			.x = l->proj.screen[l->scale].x - 1,
-			.y = l->proj.screen[l->scale].y - 1,
+			.x = l->proj.screen[l->proj.scale].x - 1,
+			.y = l->proj.screen[l->proj.scale].y - 1,
 			.w = 3,
 			.h = 3
 		};
@@ -889,7 +889,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		level_level_to_screen(l, &proj_pos, &l->proj.screen[NORMAL]);
 
 		/* Render shot for this frame */
-		if (l->proj.count > 0 && l->proj.scale_changed == false) {
+		if (l->proj.count > 0) {
 			trail_draw(l->trails[NORMAL],
 					prev[NORMAL].x,
 					prev[NORMAL].y,
@@ -915,7 +915,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 					l->proj.screen[scale].x,
 					l->proj.screen[scale].y);
 		}
-		l->proj.scale_changed = (scale != l->scale);
+		l->proj.scale = scale;
 		draw_shot_3x3(screen,
 				l->proj.screen[scale].x,
 				l->proj.screen[scale].y, l->proj.colour);
