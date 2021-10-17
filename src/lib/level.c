@@ -39,10 +39,8 @@ enum level_flags {
 	LEV_LIGHTING		= (1 << 0),
 	LEV_NEED_REDRAW		= (1 << 1),
 	LEV_ANIMATION		= (1 << 2),
-	LEV_SCALE		= (1 << 3),
-	LEV_SCALE_CHANGED	= (1 << 4),
-	LEV_STRENGTH_CHANGED	= (1 << 5),
-	LEV_NEED_REDRAW_FULL	= (1 << 6)
+	LEV_STRENGTH_CHANGED	= (1 << 3),
+	LEV_NEED_REDRAW_FULL	= (1 << 4)
 };
 
 enum state {
@@ -96,6 +94,7 @@ struct level {
 	uint32_t flags; /* Flags */
 
 	enum state state;
+	enum level_scale scale;
 
 	enum state prev_render_state;
 };
@@ -127,8 +126,7 @@ static inline bool flag_get_all(uint32_t flags, enum level_flags get_all_flags)
 
 static inline enum level_scale level_get_scale(const struct level *l)
 {
-	bool zoomed_out = flag_get(l->flags, LEV_SCALE);
-	return zoomed_out ? NORMAL : SCALED;
+	return l->scale;
 }
 
 static inline struct image *level_get_bg(const struct level *l)
@@ -206,7 +204,7 @@ static void level_player_fire(struct level *l, int player)
 	l->proj.colour = l->colour[player];
 	l->proj.count = 0;
 
-	if (flag_get(l->flags, LEV_SCALE)) {
+	if (l->scale == SCALED) {
 		level_screen_scaled_to_level(l->proj.x, l->proj.y, &x, &y);
 	} else {
 		level_screen_to_level(l, l->proj.x, l->proj.y, &x, &y);
@@ -217,7 +215,7 @@ static void level_player_fire(struct level *l, int player)
 	l->proj.vector_x *= 16 + player_get_strength(l->p[player]);
 	l->proj.vector_y *= 16 + player_get_strength(l->p[player]);
 
-	if (flag_get(l->flags, LEV_SCALE)) {
+	if (l->scale == SCALED) {
 		/* Scale strength */
 		l->proj.vector_x *= 4;
 		l->proj.vector_y *= 4;
@@ -566,6 +564,7 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 	(*level)->background[SCALED] = NULL;
 	(*level)->nplanets = 0;
 	(*level)->state = LEVEL_START;
+	(*level)->scale = NORMAL;
 
 	(*level)->flags = LEV_LIGHTING | LEV_ANIMATION;
 
@@ -613,16 +612,13 @@ static inline void level_remove_box(SDL_Surface *screen, SDL_Surface *bg,
 static void level_render_whole_background(
 		struct level *l, SDL_Surface *screen)
 {
-	if (flag_get(l->flags, LEV_SCALE)) {
-		/* Changed to scaled out view */
-		SDL_Surface *bg = image_get_surface(l->background[NORMAL]);
-		SDL_BlitSurface(bg, NULL, screen, NULL);
+	SDL_Surface *bg = image_get_surface(l->background[l->scale]);
+
+	SDL_BlitSurface(bg, NULL, screen, NULL);
+
+	if (l->scale == SCALED) {
 		draw_box(screen, 3 * l->width / 8, 3 * l->height / 8,
 				l->width / 4, l->height / 4, 0x00ffffff);
-	} else {
-		/* Changed to normal view */
-		SDL_Surface *bg = image_get_surface(l->background[SCALED]);
-		SDL_BlitSurface(bg, NULL, screen, NULL);
 	}
 }
 
@@ -800,9 +796,7 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 	int proj_pos_x, proj_pos_y;
 	int grav_x, grav_y;
 	peltar_fixed prev_x, prev_y;
-	bool scale_changed = false;
-	bool zoomed_out = flag_get(l->flags, LEV_SCALE);
-	enum level_scale scale = zoomed_out ? NORMAL : SCALED;
+	enum level_scale scale = l->scale;
 	enum players player = (l->state == TURN_SHOW_P1) ?
 			PLAYERS_1 : PLAYERS_2;
 
@@ -847,10 +841,8 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		if (proj_pos_x > min_x && proj_pos_x < max_x &&
 		    proj_pos_y > min_y && proj_pos_y < max_y) {
 			/* Within full scale area; ensure not scaled view */
-			if (zoomed_out) {
-				scale_changed = true;
-				/* Need to toggled to unscaled */
-				flag_toggle(&l->flags, LEV_SCALE);
+			if (scale == SCALED) {
+				l->scale = NORMAL;
 				/* Handle clearance to background for scale
 				 * change */
 				level_render_whole_background(l, screen);
@@ -860,31 +852,28 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		           proj_pos_y > min_y_scaled &&
 		           proj_pos_y < max_y_scaled) {
 			/* Within full scale area; ensure scaled view */
-			if (!zoomed_out) {
-				/* Need to toggled to scaled */
-				scale_changed = true;
-				flag_toggle(&l->flags, LEV_SCALE);
+			if (scale == NORMAL) {
+				l->scale = SCALED;
 				/* Handle clearance to background for scale
 				 * change */
 				level_render_whole_background(l, screen);
 			}
 		} else {
 			/* Return to unscaled view */
-			if (zoomed_out) {
-				/* Need to toggled to unscaled */
-				scale_changed = true;
-				flag_toggle(&l->flags, LEV_SCALE);
+			if (scale == SCALED) {
+				l->scale = NORMAL;
 			}
 			level_end_turn(l, player, screen);
 			return;
 		}
 
-		if (zoomed_out)
+		if (scale == SCALED) {
 			level_level_to_screen_scaled(proj_pos_x, proj_pos_y,
 					&l->proj.x, &l->proj.y);
-		else
+		} else {
 			level_level_to_screen(l, proj_pos_x, proj_pos_y,
 					&l->proj.x, &l->proj.y);
+		}
 
 		/* Render shot for this frame */
 		if (l->proj.count > 0 && l->proj.scale_changed == false) {
@@ -899,12 +888,12 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 					prev_screen_x, prev_screen_y,
 					l->proj.x, l->proj.y);
 		}
-		l->proj.scale_changed = scale_changed;
+		l->proj.scale_changed = (scale != l->scale);
 		draw_shot_3x3(screen, l->proj.x, l->proj.y, l->proj.colour);
 		l->proj.count++;
 
 		/* If scaled, can't hit player, so escape */
-		if (zoomed_out)
+		if (scale == SCALED)
 			return;
 
 		if (level_has_hit_player(l, &l->player[PLAYERS_1][NORMAL])) {
@@ -926,17 +915,12 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 bool level_update_render(struct level *l, SDL_Surface *screen)
 {
 	int i;
+	enum level_scale scale = l->scale;
 	SDL_Surface *bg = level_get_bg_surface(l);
 
 	if (flag_get(l->flags, LEV_NEED_REDRAW_FULL)) {
-		SDL_BlitSurface(level_get_bg_surface(l),
-				NULL, screen, NULL);
-		flag_toggle(&l->flags, LEV_NEED_REDRAW_FULL);
-	}
-
-	/* Handle clearance to background for scale change */
-	if (flag_get(l->flags, LEV_SCALE_CHANGED)) {
 		level_render_whole_background(l, screen);
+		flag_toggle(&l->flags, LEV_NEED_REDRAW_FULL);
 	}
 
 	if (l->state == TURN_SHOW_P1 || l->state == TURN_SHOW_P2 ||
@@ -987,11 +971,11 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 		SDL_BlitSurface(bg, &rect2, screen, &rect1);
 	}
 
-	if (!flag_get(l->flags, LEV_ANIMATION | LEV_SCALE_CHANGED |
+	if (!flag_get(l->flags, LEV_ANIMATION | (scale != l->scale) |
 			LEV_NEED_REDRAW)) {
 		/* Not showing animations */
 
-		if (flag_get(l->flags, LEV_SCALE)) {
+		if (l->scale == SCALED) {
 			player_render_direction_scaled(l->p[PLAYERS_1], screen, bg);
 			player_render_direction_scaled(l->p[PLAYERS_2], screen, bg);
 		} else {
@@ -1008,7 +992,7 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 		return false;
 	}
 
-	if (flag_get(l->flags, LEV_SCALE)) {
+	if (l->scale == SCALED) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
 					l->planet[i][SCALED].x,
@@ -1027,9 +1011,6 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 		player_update_render(l->p[PLAYERS_1], screen, bg);
 		player_update_render(l->p[PLAYERS_2], screen, bg);
 	}
-
-	if (flag_get(l->flags, LEV_SCALE_CHANGED))
-		flag_toggle(&l->flags, LEV_SCALE_CHANGED);
 
 	if (flag_get(l->flags, LEV_NEED_REDRAW))
 		flag_toggle(&l->flags, LEV_NEED_REDRAW);
@@ -1063,7 +1044,7 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 		break;
 	}
 
-	if (flag_get(l->flags, LEV_SCALE)) {
+	if (l->scale == SCALED) {
 		for (i = 0; i < l->nplanets; i++) {
 			planet_update_render_scaled(l->planets[i], screen,
 					l->planet[i][SCALED].x,
@@ -1122,7 +1103,8 @@ bool level_handle_key(struct level *l, SDL_Event *event)
 
 	case SDLK_z:
 		/* 'Z' key: toggle zoom */
-		flag_toggle(&l->flags, LEV_SCALE | LEV_SCALE_CHANGED);
+		l->scale = (l->scale == NORMAL) ? SCALED : NORMAL;
+		flag_set(&l->flags, LEV_NEED_REDRAW_FULL);
 
 		/* Handled keypress */
 		return true;
