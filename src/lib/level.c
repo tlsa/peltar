@@ -885,13 +885,22 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 		/* Render shot for this frame */
 		if (l->proj.count > 0 && l->proj.scale_changed == false) {
-			trail_draw(l->trails[scale],
-					prev[scale].x,
-					prev[scale].y,
-					l->proj.screen[scale].x,
-					l->proj.screen[scale].y);
-			trial_render(l->trails[scale],
-					image_get_surface(l->background[scale]),
+			trail_draw(l->trails[NORMAL],
+					prev[NORMAL].x,
+					prev[NORMAL].y,
+					l->proj.screen[NORMAL].x,
+					l->proj.screen[NORMAL].y);
+			trial_render(l->trails[NORMAL],
+					image_get_surface(l->background[NORMAL]),
+					l->colour[player]);
+
+			trail_draw(l->trails[SCALED],
+					prev[SCALED].x,
+					prev[SCALED].y,
+					l->proj.screen[SCALED].x,
+					l->proj.screen[SCALED].y);
+			trial_render(l->trails[SCALED],
+					image_get_surface(l->background[SCALED]),
 					l->colour[player]);
 
 			level_plot_bg_box(screen,
