@@ -90,6 +90,9 @@ struct level {
 
 	trail_t *trails[SCALE_COUNT];
 
+	struct point min[SCALE_COUNT];
+	struct point max[SCALE_COUNT];
+
 	struct image *background[SCALE_COUNT];
 
 	int width; /* Width of level */
@@ -553,6 +556,23 @@ static bool level_create_trails(struct level *level, int width, int height)
 	return true;
 }
 
+static void level_setup_projectile_bounds(struct level *l)
+{
+		static const struct point min = {
+			.x = 1,
+			.y = 1,
+		};
+		struct point max = {
+			.x = l->width - 1,
+			.y = l->height - 1,
+		};
+
+		level_screen_to_level(l, &min, &l->min[NORMAL]);
+		level_screen_to_level(l, &max, &l->max[NORMAL]);
+		level_screen_scaled_to_level(&min, &l->min[SCALED]);
+		level_screen_scaled_to_level(&max, &l->max[SCALED]);
+}
+
 bool level_create(struct level **level, struct player *p1, struct player *p2,
 		int width, int height)
 {
@@ -584,6 +604,8 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 		level_free(*level);
 		return false;
 	}
+
+	level_setup_projectile_bounds(*level);
 
 	return true;
 }
@@ -823,19 +845,6 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		level_end_turn(l, player, screen);
 
 	} else {
-		struct point min_normal;
-		struct point max_normal;
-		struct point min_scaled;
-		struct point max_scaled;
-		static const struct point min = {
-			.x = 1,
-			.y = 1,
-		};
-		struct point max = {
-			.x = l->width - 1,
-			.y = l->height - 1,
-		};
-
 		/* Update projectile position */
 		l->proj.px += grav_x / 32 + l->proj.vector_x;
 		l->proj.py += grav_y / 32 + l->proj.vector_y;
@@ -844,15 +853,11 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		l->proj.vector_x = l->proj.px - prev_x;
 		l->proj.vector_y = l->proj.py - prev_y;
 
-		/* Get projectile bounds */
-		level_screen_to_level(l, &min, &min_normal);
-		level_screen_to_level(l, &max, &max_normal);
-		level_screen_scaled_to_level(&min, &min_scaled);
-		level_screen_scaled_to_level(&max, &max_scaled);
-
 		/* Check whether projectile is within bounds */
-		if (proj_pos.x > min_normal.x && proj_pos.x < max_normal.x &&
-		    proj_pos.y > min_normal.y && proj_pos.y < max_normal.y) {
+		if (proj_pos.x > l->min[NORMAL].x &&
+		    proj_pos.x < l->max[NORMAL].x &&
+		    proj_pos.y > l->min[NORMAL].y &&
+		    proj_pos.y < l->max[NORMAL].y) {
 			/* Within full scale area; ensure not scaled view */
 			if (scale == SCALED) {
 				l->scale = NORMAL;
@@ -860,10 +865,10 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				 * change */
 				level_render_whole_background(l, screen);
 			}
-		} else if (proj_pos.x > min_scaled.x &&
-		           proj_pos.x < max_scaled.x &&
-		           proj_pos.y > min_scaled.y &&
-		           proj_pos.y < max_scaled.y) {
+		} else if (proj_pos.x > l->min[SCALED].x &&
+		           proj_pos.x < l->max[SCALED].x &&
+		           proj_pos.y > l->min[SCALED].y &&
+		           proj_pos.y < l->max[SCALED].y) {
 			/* Within full scale area; ensure scaled view */
 			if (scale == NORMAL) {
 				l->scale = SCALED;
