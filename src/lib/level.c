@@ -721,6 +721,33 @@ static bool level_has_hit_player(struct level *l, struct asset_pos *pos)
 	return false;
 }
 
+static void level_plot_bg_box(
+		SDL_Surface *screen,
+		SDL_Surface *bg,
+		int x0, int y0,
+		int x1, int y1)
+{
+	if (x0 > x1) {
+		int temp = x0;
+		x0 = x1;
+		x1 = temp;
+	}
+	if (y0 > y1) {
+		int temp = y0;
+		y0 = y1;
+		y1 = temp;
+	}
+
+	SDL_Rect r = {
+		.x = x0,
+		.y = y0,
+		.w = x1 - x0 + 1,
+		.h = y1 - y0 + 1,
+	};
+
+	SDL_BlitSurface(bg, &r, screen, &r);
+}
+
 static void level_remove_projectile(
 		const struct level *l,
 		const struct projectile *p,
@@ -861,35 +888,16 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 		/* Render shot for this frame */
 		if (l->proj.count > 0 && l->proj.scale_changed == false) {
-			int minx, miny, maxx, maxy;
 			trail_draw(l->trails[scale],
 					prev_screen_x, prev_screen_y,
 					l->proj.x, l->proj.y);
 			trial_render(l->trails[scale],
 					image_get_surface(l->background[scale]),
 					l->colour[player]);
-			if (prev_screen_x < l->proj.x) {
-				minx = prev_screen_x;
-				maxx = l->proj.x;
-			} else {
-				maxx = prev_screen_x;
-				minx = l->proj.x;
-			}
-			if (prev_screen_y < l->proj.y) {
-				miny = prev_screen_y;
-				maxy = l->proj.y;
-			} else {
-				maxy = prev_screen_y;
-				miny = l->proj.y;
-			}
-			SDL_Rect r = {
-				.x = minx,
-				.y = miny,
-				.w = maxx - minx + 1,
-				.h = maxy - miny + 1,
-			};
-			SDL_BlitSurface(image_get_surface(l->background[scale]),
-					&r, screen, &r);
+			level_plot_bg_box(screen,
+					image_get_surface(l->background[scale]),
+					prev_screen_x, prev_screen_y,
+					l->proj.x, l->proj.y);
 		}
 		l->proj.scale_changed = scale_changed;
 		draw_shot_3x3(screen, l->proj.x, l->proj.y, l->proj.colour);
