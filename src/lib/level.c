@@ -163,7 +163,7 @@ static inline void level_level_to_fixed(int x, int y,
 }
 
 /* Coordinate conversion */
-static inline void level_level_to_screen(struct level *level,
+static inline void level_level_to_screen(const struct level *level,
 		const struct point *l, struct point *s)
 {
 	/* Transform level coords to screen coords */
@@ -172,7 +172,7 @@ static inline void level_level_to_screen(struct level *level,
 }
 
 /* Coordinate conversion */
-static inline void level_screen_to_level(struct level *level,
+static inline void level_screen_to_level(const struct level *level,
 		const struct point *s, struct point *l)
 {
 	/* Transform screen coords to level coords */
