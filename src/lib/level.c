@@ -890,14 +890,16 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 		/* Render shot for this frame */
 		if (l->proj.count > 0) {
-			trail_draw(l->trails[NORMAL],
-					prev[NORMAL].x,
-					prev[NORMAL].y,
-					l->proj.screen[NORMAL].x,
-					l->proj.screen[NORMAL].y);
-			trial_render(l->trails[NORMAL],
-					image_get_surface(l->background[NORMAL]),
-					l->colour[player]);
+			if (scale == NORMAL) {
+				trail_draw(l->trails[NORMAL],
+						prev[NORMAL].x,
+						prev[NORMAL].y,
+						l->proj.screen[NORMAL].x,
+						l->proj.screen[NORMAL].y);
+				trial_render(l->trails[NORMAL],
+						image_get_surface(l->background[NORMAL]),
+						l->colour[player]);
+			}
 
 			trail_draw(l->trails[SCALED],
 					prev[SCALED].x,
