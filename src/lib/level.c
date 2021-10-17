@@ -53,11 +53,15 @@ enum state {
 	LEVEL_WIN_P2
 };
 
+struct point {
+	int x;
+	int y;
+};
+
 struct projectile {
 	peltar_fixed px;
 	peltar_fixed py;
-	int x;
-	int y;
+	struct point screen[SCALE_COUNT];
 	int vector_x;
 	int vector_y;
 	uint32_t colour;
@@ -141,10 +145,10 @@ static inline SDL_Surface *level_get_bg_surface(const struct level *l)
 
 /* Coordinate conversion */
 static inline void level_fixed_to_level(peltar_fixed fx, peltar_fixed fy,
-			int *x, int *y)
+			struct point *l)
 {
-	*x = (fx - LEVEL_FIX_OFFSET) >> LEVEL_FIX_SHIFT;
-	*y = (fy - LEVEL_FIX_OFFSET) >> LEVEL_FIX_SHIFT;
+	l->x = (fx - LEVEL_FIX_OFFSET) >> LEVEL_FIX_SHIFT;
+	l->y = (fy - LEVEL_FIX_OFFSET) >> LEVEL_FIX_SHIFT;
 }
 
 /* Coordinate conversion */
@@ -156,39 +160,39 @@ static inline void level_level_to_fixed(int x, int y,
 }
 
 /* Coordinate conversion */
-static inline void level_level_to_screen(struct level *l,
-		int lx, int ly, int *x, int *y)
+static inline void level_level_to_screen(struct level *level,
+		const struct point *l, struct point *s)
 {
 	/* Transform level coords to screen coords */
-	*x = lx - 3 * l->width / 2;
-	*y = ly - 3 * l->height / 2;
+	s->x = l->x - 3 * level->width / 2;
+	s->y = l->y - 3 * level->height / 2;
 }
 
 /* Coordinate conversion */
-static inline void level_screen_to_level(struct level *l,
-		int x, int y, int *lx, int *ly)
+static inline void level_screen_to_level(struct level *level,
+		const struct point *s, struct point *l)
 {
 	/* Transform screen coords to level coords */
-	*lx = 3 * l->width / 2 + x;
-	*ly = 3 * l->height / 2 + y;
+	l->x = 3 * level->width / 2 + s->x;
+	l->y = 3 * level->height / 2 + s->y;
 }
 
 /* Coordinate conversion */
 static inline void level_level_to_screen_scaled(
-		int lx, int ly, int *x, int *y)
+		const struct point *l, struct point *s)
 {
 	/* Transform level coords to screen coords */
-	*x = lx / 4;
-	*y = ly / 4;
+	s->x = l->x / 4;
+	s->y = l->y / 4;
 }
 
 /* Coordinate conversion */
-static inline void level_screen_scaled_to_level(int x, int y,
-		int *lx, int *ly)
+static inline void level_screen_scaled_to_level(
+		const struct point *s, struct point *l)
 {
 	/* Transform scaled screen coords to level coords */
-	*lx = x * 4;
-	*ly = y * 4;
+	l->x = s->x * 4;
+	l->y = s->y * 4;
 }
 
 void level_init(void)
@@ -196,29 +200,32 @@ void level_init(void)
 	planet_init();
 }
 
-static void level_player_fire(struct level *l, int player)
+static void level_player_fire(struct level *level, int player)
 {
-	int x, y;
-	player_get_target(l->p[player], &l->proj.x, &l->proj.y,
-			&l->proj.vector_x, &l->proj.vector_y);
-	l->proj.colour = l->colour[player];
-	l->proj.count = 0;
+	struct point l;
+	player_get_target(level->p[player],
+			&level->proj.screen[NORMAL].x,
+			&level->proj.screen[NORMAL].y,
+			&level->proj.vector_x,
+			&level->proj.vector_y);
+	level->proj.colour = level->colour[player];
+	level->proj.count = 0;
 
-	if (l->scale == SCALED) {
-		level_screen_scaled_to_level(l->proj.x, l->proj.y, &x, &y);
+	if (level->scale == SCALED) {
+		level_screen_scaled_to_level(&level->proj.screen[SCALED], &l);
 	} else {
-		level_screen_to_level(l, l->proj.x, l->proj.y, &x, &y);
+		level_screen_to_level(level, &level->proj.screen[NORMAL], &l);
 	}
 
-	level_level_to_fixed(x, y, &(l->proj.px), &(l->proj.py));
+	level_level_to_fixed(l.x, l.y, &(level->proj.px), &(level->proj.py));
 
-	l->proj.vector_x *= 16 + player_get_strength(l->p[player]);
-	l->proj.vector_y *= 16 + player_get_strength(l->p[player]);
+	level->proj.vector_x *= 16 + player_get_strength(level->p[player]);
+	level->proj.vector_y *= 16 + player_get_strength(level->p[player]);
 
-	if (l->scale == SCALED) {
+	if (level->scale == SCALED) {
 		/* Scale strength */
-		l->proj.vector_x *= 4;
-		l->proj.vector_y *= 4;
+		level->proj.vector_x *= 4;
+		level->proj.vector_y *= 4;
 	}
 
 	return;
@@ -668,26 +675,26 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 	int i;
 	int x = 0;
 	int y = 0;
-	int point_lx, point_ly;
+	struct point point_l;
 
-	level_fixed_to_level(px, py, &point_lx, &point_ly);
+	level_fixed_to_level(px, py, &point_l);
 
 	for (i = 0; i < l->nplanets; i++) {
-		int planet_lx, planet_ly;
+		struct asset_pos *planet_pos = &l->planet[i][SCALED];
 		int distance_x, distance_y;
 		int64_t mass = l->planet_mass[i];
 		int distance;
 		int a;
+		struct point centre_level;
+		struct point centre = {
+			.x = planet_pos->x + planet_pos->size / 2,
+			.y = planet_pos->y + planet_pos->size / 2,
+		};
 
-		level_screen_scaled_to_level(
-				l->planet[i][SCALED].x +
-					l->planet[i][SCALED].size / 2,
-				l->planet[i][SCALED].y +
-					l->planet[i][SCALED].size / 2,
-				&planet_lx, &planet_ly);
+		level_screen_scaled_to_level(&centre, &centre_level);
 
-		distance_x = (planet_lx - point_lx);
-		distance_y = (planet_ly - point_ly);
+		distance_x = (centre_level.x - point_l.x);
+		distance_y = (centre_level.y - point_l.y);
 
 		distance = peltar_hypot(distance_x, distance_y);
 
@@ -708,8 +715,8 @@ static inline bool level_get_gravity_vector_at_point(struct level *l,
 static bool level_has_hit_player(struct level *l, struct asset_pos *pos)
 {
 	int r = pos->size / 2;
-	int x = l->proj.x - (pos->x + r);
-	int y = l->proj.y - (pos->y + r);
+	int x = l->proj.screen[NORMAL].x - (pos->x + r);
+	int y = l->proj.screen[NORMAL].y - (pos->y + r);
 
 	if ((x * x) + (y * y) < (r * r))
 		return true;
@@ -753,8 +760,8 @@ static void level_remove_projectile(
 	    l->prev_render_state == TURN_SHOW_P2) {
 		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect = {
-			.x = l->proj.x - 1,
-			.y = l->proj.y - 1,
+			.x = l->proj.screen[l->scale].x - 1,
+			.y = l->proj.screen[l->scale].y - 1,
 			.w = 3,
 			.h = 3
 		};
@@ -793,7 +800,7 @@ static void level_end_turn(
 
 static void level_update_projectile(struct level *l, SDL_Surface *screen)
 {
-	int proj_pos_x, proj_pos_y;
+	struct point proj_pos;
 	int grav_x, grav_y;
 	peltar_fixed prev_x, prev_y;
 	enum level_scale scale = l->scale;
@@ -804,8 +811,10 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 	prev_x = l->proj.px;
 	prev_y = l->proj.py;
-	int prev_screen_x = l->proj.x;
-	int prev_screen_y = l->proj.y;
+	struct point prev[SCALE_COUNT] = {
+		[NORMAL] = l->proj.screen[NORMAL],
+		[SCALED] = l->proj.screen[SCALED],
+	};
 
 	/* Work out new shot position */
 	if (level_get_gravity_vector_at_point(l,
@@ -814,32 +823,36 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 		level_end_turn(l, player, screen);
 
 	} else {
-		int min_x, min_y, max_x, max_y;
-		int min_x_scaled, min_y_scaled;
-		int max_x_scaled, max_y_scaled;
+		struct point min_normal;
+		struct point max_normal;
+		struct point min_scaled;
+		struct point max_scaled;
+		static const struct point min = {
+			.x = 1,
+			.y = 1,
+		};
+		struct point max = {
+			.x = l->width - 1,
+			.y = l->height - 1,
+		};
 
 		/* Update projectile position */
 		l->proj.px += grav_x / 32 + l->proj.vector_x;
 		l->proj.py += grav_y / 32 + l->proj.vector_y;
-		level_fixed_to_level(l->proj.px, l->proj.py,
-				&proj_pos_x, &proj_pos_y);
+		level_fixed_to_level(l->proj.px, l->proj.py, &proj_pos);
 
 		l->proj.vector_x = l->proj.px - prev_x;
 		l->proj.vector_y = l->proj.py - prev_y;
 
 		/* Get projectile bounds */
-		level_screen_to_level(l, 1, 1, &min_x, &min_y);
-		level_screen_to_level(l, l->width - 1, l->height - 1,
-				&max_x, &max_y);
-
-		level_screen_scaled_to_level(1, 1,
-				&min_x_scaled, &min_y_scaled);
-		level_screen_scaled_to_level(l->width - 1, l->height - 1,
-				&max_x_scaled, &max_y_scaled);
+		level_screen_to_level(l, &min, &min_normal);
+		level_screen_to_level(l, &max, &max_normal);
+		level_screen_scaled_to_level(&min, &min_scaled);
+		level_screen_scaled_to_level(&max, &max_scaled);
 
 		/* Check whether projectile is within bounds */
-		if (proj_pos_x > min_x && proj_pos_x < max_x &&
-		    proj_pos_y > min_y && proj_pos_y < max_y) {
+		if (proj_pos.x > min_normal.x && proj_pos.x < max_normal.x &&
+		    proj_pos.y > min_normal.y && proj_pos.y < max_normal.y) {
 			/* Within full scale area; ensure not scaled view */
 			if (scale == SCALED) {
 				l->scale = NORMAL;
@@ -847,10 +860,10 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 				 * change */
 				level_render_whole_background(l, screen);
 			}
-		} else if (proj_pos_x > min_x_scaled &&
-		           proj_pos_x < max_x_scaled &&
-		           proj_pos_y > min_y_scaled &&
-		           proj_pos_y < max_y_scaled) {
+		} else if (proj_pos.x > min_scaled.x &&
+		           proj_pos.x < max_scaled.x &&
+		           proj_pos.y > min_scaled.y &&
+		           proj_pos.y < max_scaled.y) {
 			/* Within full scale area; ensure scaled view */
 			if (scale == NORMAL) {
 				l->scale = SCALED;
@@ -867,29 +880,31 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			return;
 		}
 
-		if (scale == SCALED) {
-			level_level_to_screen_scaled(proj_pos_x, proj_pos_y,
-					&l->proj.x, &l->proj.y);
-		} else {
-			level_level_to_screen(l, proj_pos_x, proj_pos_y,
-					&l->proj.x, &l->proj.y);
-		}
+		level_level_to_screen_scaled(&proj_pos, &l->proj.screen[SCALED]);
+		level_level_to_screen(l, &proj_pos, &l->proj.screen[NORMAL]);
 
 		/* Render shot for this frame */
 		if (l->proj.count > 0 && l->proj.scale_changed == false) {
 			trail_draw(l->trails[scale],
-					prev_screen_x, prev_screen_y,
-					l->proj.x, l->proj.y);
+					prev[scale].x,
+					prev[scale].y,
+					l->proj.screen[scale].x,
+					l->proj.screen[scale].y);
 			trial_render(l->trails[scale],
 					image_get_surface(l->background[scale]),
 					l->colour[player]);
+
 			level_plot_bg_box(screen,
 					image_get_surface(l->background[scale]),
-					prev_screen_x, prev_screen_y,
-					l->proj.x, l->proj.y);
+					prev[scale].x,
+					prev[scale].y,
+					l->proj.screen[scale].x,
+					l->proj.screen[scale].y);
 		}
 		l->proj.scale_changed = (scale != l->scale);
-		draw_shot_3x3(screen, l->proj.x, l->proj.y, l->proj.colour);
+		draw_shot_3x3(screen,
+				l->proj.screen[scale].x,
+				l->proj.screen[scale].y, l->proj.colour);
 		l->proj.count++;
 
 		/* If scaled, can't hit player, so escape */
