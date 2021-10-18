@@ -911,16 +911,16 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 					l->colour[player]);
 
 			level_plot_bg_box(screen,
-					image_get_surface(l->background[scale]),
-					prev[scale].x,
-					prev[scale].y,
-					l->proj.screen[scale].x,
-					l->proj.screen[scale].y);
+					image_get_surface(l->background[l->scale]),
+					prev[l->scale].x,
+					prev[l->scale].y,
+					l->proj.screen[l->scale].x,
+					l->proj.screen[l->scale].y);
 		}
 		l->proj.scale = scale;
 		draw_shot_3x3(screen,
-				l->proj.screen[scale].x,
-				l->proj.screen[scale].y, l->proj.colour);
+				l->proj.screen[l->scale].x,
+				l->proj.screen[l->scale].y, l->proj.colour);
 		l->proj.count++;
 
 		/* If scaled, can't hit player, so escape */
