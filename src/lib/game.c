@@ -51,7 +51,7 @@ void game_free(struct game *game)
 
 static bool game_create_details(struct game *game, int width, int height)
 {
-	if (!player_create(&game->p1, 0x000066ff)) {
+	if (!player_create(&game->p1, 0x000077ff)) {
 		return false;
 	}
 
@@ -125,7 +125,10 @@ void game_update(struct game *g, SDL_Surface *screen)
 
 	if (complete) {
 		printf("Player %i wins!\n", level_get_winner(g->l));
-		//TODO: Highscore tables, menus and stuff
+		//TODO: Highscore table, menu, etc, rather than free & exit.
+		level_free(g->l);
+		player_free(g->p1);
+		player_free(g->p2);
 		exit(EXIT_SUCCESS);
 	}
 }

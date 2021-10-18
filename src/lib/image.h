@@ -8,6 +8,7 @@
 struct image;
 
 bool image_create(struct image **image, int width, int height);
+bool image_clone(const struct image *orig, struct image **image);
 void image_free(struct image *image);
 
 SDL_Surface * image_get_surface(const struct image *image);
