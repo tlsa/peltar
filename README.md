@@ -1,7 +1,7 @@
 Peltar: 2D gravity-based space combat game
 ==========================================
 
-> **Note**: This game is completely unfinished and not actively developed.
+> **Note**: This game is unfinished and not actively developed.
 
 Peltar is a game for two players who must each try to shoot the other player's
 ship.  Missiles are affected by the gravity of the intervening planets.  It
@@ -23,9 +23,8 @@ I also had an idea for rendering 3D spheres using 2D techniques.  (Basically
 drawing a circle and indexing into a texture with a bit of maths to select
 a pixel colour that would give the illusion of 3D.)
 
-It is completely unfinished, although it did just about reach the point of
-being almost playable.  I've not worked on it for ages, but thought it would
-be better on GitHub than on an old HDD.
+It is unfinished, although it is playable.  Most of what remains to do is
+main menu, setting up a game, score keeping, etc.
 
 Compile and run
 ---------------
