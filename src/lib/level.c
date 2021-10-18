@@ -820,6 +820,56 @@ static void level_end_turn(
 	level_render_whole_background(l, screen);
 }
 
+static void level__draw_projectile(
+		struct level *l,
+		SDL_Surface *screen,
+		enum players player,
+		struct point *proj_pos)
+{
+	struct point prev[SCALE_COUNT] = {
+		[NORMAL] = l->proj.screen[NORMAL],
+		[SCALED] = l->proj.screen[SCALED],
+	};
+
+	level_level_to_screen_scaled(proj_pos, &l->proj.screen[SCALED]);
+	level_level_to_screen(l, proj_pos, &l->proj.screen[NORMAL]);
+
+	if (l->proj.count > 0) {
+		if (l->scale == NORMAL) {
+			trail_draw(l->trails[NORMAL],
+					prev[NORMAL].x,
+					prev[NORMAL].y,
+					l->proj.screen[NORMAL].x,
+					l->proj.screen[NORMAL].y);
+			trial_render(l->trails[NORMAL],
+					image_get_surface(l->background[NORMAL]),
+					l->colour[player]);
+		}
+
+		trail_draw(l->trails[SCALED],
+				prev[SCALED].x,
+				prev[SCALED].y,
+				l->proj.screen[SCALED].x,
+				l->proj.screen[SCALED].y);
+		trial_render(l->trails[SCALED],
+				image_get_surface(l->background[SCALED]),
+				l->colour[player]);
+
+		level_plot_bg_box(screen,
+				image_get_surface(l->background[l->scale]),
+				prev[l->scale].x,
+				prev[l->scale].y,
+				l->proj.screen[l->scale].x,
+				l->proj.screen[l->scale].y);
+	}
+
+	draw_shot_3x3(screen,
+			l->proj.screen[l->scale].x,
+			l->proj.screen[l->scale].y, l->proj.colour);
+
+	l->proj.count++;
+}
+
 static void level_update_projectile(struct level *l, SDL_Surface *screen)
 {
 	struct point proj_pos;
@@ -833,10 +883,6 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 
 	prev_x = l->proj.px;
 	prev_y = l->proj.py;
-	struct point prev[SCALE_COUNT] = {
-		[NORMAL] = l->proj.screen[NORMAL],
-		[SCALED] = l->proj.screen[SCALED],
-	};
 
 	/* Work out new shot position */
 	if (level_get_gravity_vector_at_point(l,
@@ -885,43 +931,8 @@ static void level_update_projectile(struct level *l, SDL_Surface *screen)
 			return;
 		}
 
-		level_level_to_screen_scaled(&proj_pos, &l->proj.screen[SCALED]);
-		level_level_to_screen(l, &proj_pos, &l->proj.screen[NORMAL]);
-
-		/* Render shot for this frame */
-		if (l->proj.count > 0) {
-			if (scale == NORMAL) {
-				trail_draw(l->trails[NORMAL],
-						prev[NORMAL].x,
-						prev[NORMAL].y,
-						l->proj.screen[NORMAL].x,
-						l->proj.screen[NORMAL].y);
-				trial_render(l->trails[NORMAL],
-						image_get_surface(l->background[NORMAL]),
-						l->colour[player]);
-			}
-
-			trail_draw(l->trails[SCALED],
-					prev[SCALED].x,
-					prev[SCALED].y,
-					l->proj.screen[SCALED].x,
-					l->proj.screen[SCALED].y);
-			trial_render(l->trails[SCALED],
-					image_get_surface(l->background[SCALED]),
-					l->colour[player]);
-
-			level_plot_bg_box(screen,
-					image_get_surface(l->background[l->scale]),
-					prev[l->scale].x,
-					prev[l->scale].y,
-					l->proj.screen[l->scale].x,
-					l->proj.screen[l->scale].y);
-		}
-		l->proj.scale = scale;
-		draw_shot_3x3(screen,
-				l->proj.screen[l->scale].x,
-				l->proj.screen[l->scale].y, l->proj.colour);
-		l->proj.count++;
+		l->proj.scale = l->scale;
+		level__draw_projectile(l, screen, player, &proj_pos);
 
 		/* If scaled, can't hit player, so escape */
 		if (scale == SCALED)
