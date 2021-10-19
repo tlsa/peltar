@@ -782,8 +782,8 @@ static void level_remove_projectile(
 	    l->prev_render_state == TURN_SHOW_P2) {
 		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect = {
-			.x = l->proj.screen[l->proj.scale].x - 1,
-			.y = l->proj.screen[l->proj.scale].y - 1,
+			.x = p->screen[p->scale].x - 1,
+			.y = p->screen[p->scale].y - 1,
 			.w = 3,
 			.h = 3
 		};
