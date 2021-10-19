@@ -212,7 +212,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 		/* Cache lighting values for half circle */
 		for (x = line_start; x < r; x++) {
 			double lighting;
-			double z = sqrt(abs((r + 0.5) * (r + 0.5) -
+			double z = sqrt(fabs((r + 0.5) * (r + 0.5) -
 					(r - x) * (r - x) -
 					(r - y) * (r - y)));
 
@@ -249,7 +249,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			/* Caching lighting for top half of circle.
 			 * Do same as above for top right quarter. */
 
-			z = sqrt(abs((r + 0.5) * (r + 0.5) -
+			z = sqrt(fabs((r + 0.5) * (r + 0.5) -
 					(r - x) * (r - x) -
 					(r - y) * (r - y)));
 

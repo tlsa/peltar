@@ -145,8 +145,8 @@ bool texture_get_starscape(struct image *image)
 	SDL_Surface *render = image_get_surface(image);
 	uint32_t stride = render->pitch / peltar_opts.screen_bpp;
 	uint32_t *row_start = (uint32_t*)render->pixels;
-	int w = image_get_width(image) << FIX_SHIFT;
-	int h = image_get_height(image) << FIX_SHIFT;
+	unsigned int w = image_get_width(image) << FIX_SHIFT;
+	unsigned int h = image_get_height(image) << FIX_SHIFT;
 	uint32_t seeds[3];
 	uint32_t *pixel;
 	struct point_3d p = {

@@ -126,11 +126,6 @@ static inline bool flag_get(uint32_t flags, enum level_flags get_flags)
 	return flags & get_flags;
 }
 
-static inline bool flag_get_all(uint32_t flags, enum level_flags get_all_flags)
-{
-	return get_all_flags == (flags & get_all_flags);
-}
-
 static inline enum level_scale level_get_scale(const struct level *l)
 {
 	return l->scale;
@@ -244,13 +239,13 @@ static void level_set_state(struct level *l, enum state s)
 		assert(l->state == LEVEL_START ||
 				l->state == TURN_SHOW_P2);
 
+		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 		player_set_mouse_pos_to_target(l->p[PLAYERS_1]);
 		player_show_direction(l->p[PLAYERS_1], true);
 		break;
 
 	case TURN_SHOW_P1:
 		assert(l->state == TURN_GET_P1_INPUT);
-		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 		player_show_direction(l->p[PLAYERS_1], false);
 		level_player_fire(l, PLAYERS_1);
 		break;
@@ -258,13 +253,13 @@ static void level_set_state(struct level *l, enum state s)
 	case TURN_GET_P2_INPUT:
 		assert(l->state == TURN_SHOW_P1);
 
+		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 		player_set_mouse_pos_to_target(l->p[PLAYERS_2]);
 		player_show_direction(l->p[PLAYERS_2], true);
 		break;
 
 	case TURN_SHOW_P2:
 		assert(l->state == TURN_GET_P2_INPUT);
-		flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 		player_show_direction(l->p[PLAYERS_2], false);
 		level_player_fire(l, PLAYERS_2);
 		break;
@@ -782,8 +777,8 @@ static void level_remove_projectile(
 	    l->prev_render_state == TURN_SHOW_P2) {
 		SDL_Surface *bg = level_get_bg_surface(l);
 		SDL_Rect rect = {
-			.x = l->proj.screen[l->proj.scale].x - 1,
-			.y = l->proj.screen[l->proj.scale].y - 1,
+			.x = p->screen[p->scale].x - 1,
+			.y = p->screen[p->scale].y - 1,
 			.w = 3,
 			.h = 3
 		};
@@ -977,24 +972,26 @@ bool level_update_render(struct level *l, SDL_Surface *screen)
 	}
 
 	if ((l->state == TURN_GET_P1_INPUT || l->state == TURN_GET_P2_INPUT) &&
-			(flag_get(l->flags, LEV_STRENGTH_CHANGED) ||
-			(l->prev_render_state != TURN_GET_P1_INPUT ||
-			 l->prev_render_state != TURN_GET_P2_INPUT))) {
+			(flag_get(l->flags, LEV_STRENGTH_CHANGED))) {
 		int width = l->width / 2;
 		int height = l->height / 64;
 
-		if (l->state == TURN_GET_P1_INPUT)
+		if (l->state == TURN_GET_P1_INPUT) {
 			player_render_strength(l->p[PLAYERS_1], screen,
 					l->width / 4,
 					l->height / 64, width, height);
-		else
+		} else {
 			player_render_strength(l->p[PLAYERS_2], screen,
 					l->width / 4,
 					l->height / 64, width, height);
+		}
 
-	} else if (flag_get(l->flags, LEV_STRENGTH_CHANGED) &&
-			l->state != TURN_GET_P1_INPUT &&
-			l->state != TURN_GET_P2_INPUT) {
+		flag_unset(&l->flags, LEV_STRENGTH_CHANGED);
+
+	} else if ((l->prev_render_state == TURN_GET_P1_INPUT ||
+		    l->prev_render_state == TURN_GET_P2_INPUT) &&
+		   (l->state != TURN_GET_P1_INPUT &&
+		    l->state != TURN_GET_P2_INPUT)) {
 		int width = l->width / 2;
 		int height = l->height / 64;
 		SDL_Surface *bg = level_get_bg_surface(l);
@@ -1219,18 +1216,22 @@ bool level_handle_mouse(struct level *l, SDL_Event *event)
 		if (event->button.button == SDL_BUTTON_WHEELUP) {
 			if (l->state == TURN_GET_P1_INPUT) {
 				player_increase_strength(l->p[PLAYERS_1]);
+				flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 
 			} else if (l->state == TURN_GET_P2_INPUT) {
 				player_increase_strength(l->p[PLAYERS_2]);
+				flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 			}
 		}
 
 		if (event->button.button == SDL_BUTTON_WHEELDOWN) {
 			if (l->state == TURN_GET_P1_INPUT) {
 				player_reduce_strength(l->p[PLAYERS_1]);
+				flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 
 			} else if (l->state == TURN_GET_P2_INPUT) {
 				player_reduce_strength(l->p[PLAYERS_2]);
+				flag_set(&l->flags, LEV_STRENGTH_CHANGED);
 			}
 		}
 
