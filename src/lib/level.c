@@ -126,11 +126,6 @@ static inline bool flag_get(uint32_t flags, enum level_flags get_flags)
 	return flags & get_flags;
 }
 
-static inline bool flag_get_all(uint32_t flags, enum level_flags get_all_flags)
-{
-	return get_all_flags == (flags & get_all_flags);
-}
-
 static inline enum level_scale level_get_scale(const struct level *l)
 {
 	return l->scale;
