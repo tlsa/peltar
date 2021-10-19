@@ -158,6 +158,8 @@ static inline uint32_t texture_earth_like_forest(const struct point_3d p,
 	uint8_t texture, texture2;
 	uint32_t res;
 
+	(void)(s);
+
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 16;
 	texture += 255 / 8 + 255 / 32;
@@ -176,6 +178,8 @@ static inline uint32_t texture_earth_like_grass(const struct point_3d p,
 {
 	uint8_t texture, texture2;
 	uint32_t res;
+
+	(void)(s);
 
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 8;

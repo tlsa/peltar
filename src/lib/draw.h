@@ -196,6 +196,8 @@ static inline void draw_bitmap_1bpp(SDL_Surface *screen,
 	const int y_step = screen->pitch / peltar_opts.screen_bpp;
 	uint32_t *row = screen->pixels;
 
+	(void)(width);
+
 	for (int y = 0; y < height; y++) {
 		uint32_t *pixel = row;
 		for (int x = 0; x < row_stride; x++) {

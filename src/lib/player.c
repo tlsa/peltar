@@ -112,6 +112,8 @@ void player_set_pos(struct player *p, int x, int y, int scaled_x, int scaled_y)
 
 bool player_handle_key(struct player *p, SDL_Event *event)
 {
+	(void)(p);
+	(void)(event);
 	return false;
 }
 
