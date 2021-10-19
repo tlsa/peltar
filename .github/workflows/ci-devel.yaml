@@ -33,3 +33,25 @@ jobs:
       run: make CC=clang
     - name: test
       run: make test CC=clang
+  mac-gcc:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: brew install deps
+      run: brew update && brew install
+               sdl sdl_image
+    - name: build
+      run: make
+    - name: test
+      run: make test
+  mac-clang:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: brew install deps
+      run: brew update && brew install
+               sdl sdl_image
+    - name: build
+      run: make CC=clang
+    - name: test
+      run: make test CC=clang
