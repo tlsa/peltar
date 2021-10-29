@@ -8,4 +8,5 @@ test-lighting
 test-planet
 test-starscape
 test-texture
+test-cli
 test/*.o
