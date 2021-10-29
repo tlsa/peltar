@@ -6,6 +6,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
+#include "../src/lib/cli.h"
 #include "../src/lib/level.h"
 #include "../src/lib/types.h"
 #include "../src/lib/player.h"
@@ -52,6 +53,25 @@ static inline bool screen_draw(SDL_Surface* screen, struct level *l,
 	return true;
 }
 
+static struct peltar_options {
+	uint64_t w;
+	uint64_t h;
+} opt = {
+	.w = WIDTH,
+	.h = HEIGHT,
+};
+
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "width",  .s = 'w', .t = CLI_UINT, .v.u = &opt.w,
+	  .d = "Window width in pixels. " },
+	{ .l = "height", .s = 'h', .t = CLI_UINT, .v.u = &opt.h,
+	  .d = "Window height in pixels. " },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
+};
 
 int main(int argc, char* argv[])
 {
@@ -63,8 +83,13 @@ int main(int argc, char* argv[])
 	int keypress = 0;
 	unsigned int t;
 
-	peltar_opts.screen_width = WIDTH;
-	peltar_opts.screen_height = HEIGHT;
+	if (!cli_parse(&cli, argc, argv)) {
+		cli_help(&cli, argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	peltar_opts.screen_width = opt.w;
+	peltar_opts.screen_height = opt.h;
 	peltar_opts.screen_bpp = 4;
 	peltar_opts.screen_depth = 32;
 
