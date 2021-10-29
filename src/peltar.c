@@ -53,7 +53,6 @@ static inline bool peltar_do_stuff(SDL_Surface* screen, struct game *g)
 	return true;
 }
 
-
 int main(int argc, char* argv[])
 {
 	SDL_Surface *screen;
@@ -83,7 +82,8 @@ int main(int argc, char* argv[])
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 		return EXIT_FAILURE;
 
-	screen = SDL_SetVideoMode(peltar_opts.screen_width,
+	screen = SDL_SetVideoMode(
+			peltar_opts.screen_width,
 			peltar_opts.screen_height,
 			peltar_opts.screen_depth,
 			(peltar_opts.fullscreen ? SDL_FULLSCREEN : 0) |
@@ -95,7 +95,8 @@ int main(int argc, char* argv[])
 
 	SDL_WM_SetCaption("Peltar", "Peltar");
 
-	if (!game_create(&g, peltar_opts.screen_width,
+	if (!game_create(&g,
+			peltar_opts.screen_width,
 			peltar_opts.screen_height)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
@@ -139,4 +140,3 @@ int main(int argc, char* argv[])
 
 	return EXIT_SUCCESS;
 }
-
