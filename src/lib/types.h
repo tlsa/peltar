@@ -14,10 +14,10 @@ struct point_3d {
 
 struct peltar_config {
 	bool fullscreen;
-	uint32_t screen_width;
-	uint32_t screen_height;
-	uint32_t screen_bpp;
-	uint32_t screen_depth;
+	uint64_t screen_width;
+	uint64_t screen_height;
+	uint64_t screen_bpp;
+	uint64_t screen_depth;
 };
 
 extern struct peltar_config peltar_opts;
