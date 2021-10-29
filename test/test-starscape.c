@@ -6,6 +6,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
+#include "../src/lib/cli.h"
 #include "../src/lib/types.h"
 #include "../src/lib/image.h"
 #include "../src/lib/texture/starscape.h"
@@ -49,6 +50,33 @@ bool screen_draw(SDL_Surface* screen, struct image *bg1, unsigned int t)
 	return true;
 }
 
+static struct peltar_options {
+	bool time;
+	uint64_t count;
+	uint64_t w;
+	uint64_t h;
+} opt = {
+	.time = false,
+	.count = 25,
+	.w = WIDTH,
+	.h = HEIGHT,
+};
+
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "time"  , .s = 't', .t = CLI_BOOL, .v.b = &opt.time,
+	  .d = "Exit after generating a fixed number of textures."  },
+	{ .l = "count" , .s = 'c', .t = CLI_UINT, .v.u = &opt.count,
+	  .d = "Number of textures to generate before exiting. " },
+	{ .l = "width" , .s = 'w', .t = CLI_UINT, .v.u = &opt.w,
+	  .d = "Window width in pixels. " },
+	{ .l = "height", .s = 'h', .t = CLI_UINT, .v.u = &opt.h,
+	  .d = "Window height in pixels. " },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = CLI_ARRAY_LEN(cli_entries),
+};
 
 int main(int argc, char* argv[])
 {
@@ -58,8 +86,13 @@ int main(int argc, char* argv[])
 	unsigned int t = 0;
 	int keypress = 0;
 
-	peltar_opts.screen_width = WIDTH;
-	peltar_opts.screen_height = HEIGHT;
+	if (!cli_parse(&cli, argc, argv)) {
+		cli_help(&cli, argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	peltar_opts.screen_width = opt.w;
+	peltar_opts.screen_height = opt.h;
 	peltar_opts.screen_bpp = 4;
 	peltar_opts.screen_depth = 32;
 
@@ -84,7 +117,15 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (argc == 1) {
+	if (opt.time) {
+		for (uint64_t i = 0; i < opt.count; i++) {
+			if (!texture_get_starscape(bg1)) {
+				printf("Failed.");
+				SDL_Quit();
+				return EXIT_FAILURE;
+			}
+		}
+	} else {
 		while (!keypress) {
 			screen_draw(screen, bg1, t++);
 
@@ -105,15 +146,6 @@ int main(int argc, char* argv[])
 					}
 					break;
 				}
-			}
-		}
-	} else {
-		int i;
-		for (i = 0; i < 25; i++) {
-			if (!texture_get_starscape(bg1)) {
-				printf("Failed.");
-				SDL_Quit();
-				return EXIT_FAILURE;
 			}
 		}
 	}
