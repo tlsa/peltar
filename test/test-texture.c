@@ -8,6 +8,7 @@
 
 #include "../src/lib/planet.h"
 #include "../src/lib/types.h"
+#include "../src/lib/cli.h"
 
 
 #ifndef M_PI
@@ -77,6 +78,23 @@ bool screen_draw(SDL_Surface* screen, struct planet *p1, struct planet *p2,
 	return true;
 }
 
+static struct peltar_options {
+	bool cellular;
+	uint64_t w;
+	uint64_t h;
+} opt = {
+	.cellular = false,
+};
+
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "cellular", .s = 'c', .t = CLI_BOOL, .v.b = &opt.cellular,
+	  .d = "Use a cellular texture."  },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
+};
 
 int main(int argc, char* argv[])
 {
@@ -87,6 +105,11 @@ int main(int argc, char* argv[])
 	unsigned int t = 0;
 	int keypress = 0;
 	bool lighting = false;
+
+	if (!cli_parse(&cli, argc, argv)) {
+		cli_help(&cli, argv[0]);
+		return EXIT_FAILURE;
+	}
 
 	peltar_opts.screen_width = WIDTH;
 	peltar_opts.screen_height = HEIGHT;
@@ -123,13 +146,13 @@ int main(int argc, char* argv[])
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
-	if (argc == 1) {
-		if (!planet_generate_texture(p2)) {
+	if (opt.cellular) {
+		if (!planet_generate_texture_man_made(p2, 0xff0000)) {
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}
 	} else {
-		if (!planet_generate_texture_man_made(p2, 0xff0000)) {
+		if (!planet_generate_texture(p2)) {
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}

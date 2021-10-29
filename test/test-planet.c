@@ -6,6 +6,7 @@
 
 #include "../src/lib/planet.h"
 #include "../src/lib/types.h"
+#include "../src/lib/cli.h"
 
 
 //#define WIDTH 1360
@@ -42,13 +43,37 @@ static inline bool screen_draw(SDL_Surface* screen, struct planet *planet)
 	return true;
 }
 
+static struct peltar_options {
+	bool time;
+	uint64_t count;
+} opt = {
+	.time = false,
+	.count = 50000,
+};
 
-int main(int argc, char* argv[])
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "time" , .s = 't', .t = CLI_BOOL, .v.b = &opt.time,
+	  .d = "Exit after rendering a fixed number of frames."  },
+	{ .l = "count", .s = 'c', .t = CLI_UINT, .v.u = &opt.count,
+	  .d = "Number of frames to render before exiting. " },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
+};
+
+int main(int argc, char *argv[])
 {
 	SDL_Surface *screen;
 	SDL_Event event;
 	struct planet *planet;
 	int keypress = 0;
+
+	if (!cli_parse(&cli, argc, argv)) {
+		cli_help(&cli, argv[0]);
+		return EXIT_FAILURE;
+	}
 
 	peltar_opts.screen_width = WIDTH;
 	peltar_opts.screen_height = HEIGHT;
@@ -81,7 +106,11 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (argc == 1) {
+	if (opt.time) {
+		for (uint64_t i = 0; i < opt.count; i++) {
+			planet_update_render(planet, screen, 0, 0);
+		}
+	} else {
 		while (!keypress) {
 			screen_draw(screen, planet);
 
@@ -95,11 +124,6 @@ int main(int argc, char* argv[])
 					break;
 				}
 			}
-		}
-	} else {
-		int i;
-		for (i = 0; i < 50000; i++) {
-			planet_update_render(planet, screen, 0, 0);
 		}
 	}
 

@@ -14,7 +14,8 @@ test: \
 	test-lighting \
 	test-texture \
 	test-starscape \
-	test-level
+	test-level \
+	test-cli
 
 SRC_COMMON = $(foreach dir, $(SOURCE_DIRS_COMMON), $(wildcard $(dir)/*.c))
 OBJ_COMMON = $(patsubst %.c, %.o, $(SRC_COMMON))
@@ -41,6 +42,9 @@ test-starscape: $(OBJ_COMMON) test/test-starscape.o
 	$(CC) $^ $(LFLAGS) -o $@
 
 test-level: $(OBJ_COMMON) test/test-level.o
+	$(CC) $^ $(LFLAGS) -o $@
+
+test-cli: src/lib/cli.o test/test-cli.o
 	$(CC) $^ $(LFLAGS) -o $@
 
 $(OBJ_COMMON) : %.o : %.c
