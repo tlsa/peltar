@@ -224,6 +224,7 @@ static bool cli__handle_arg_value(const struct cli_table_entry *entry,
 	} else if (arg[pos] == sep) {
 		pos++;
 	} else if (cli__arg_is_numerical(entry->t) == false) {
+		fprintf(stderr, "Separator required for non-numerical value\n");
 		return false;
 	}
 
