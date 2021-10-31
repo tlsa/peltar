@@ -5,8 +5,8 @@ Peltar: 2D gravity-based space combat game
 
 Peltar is a game for two players who must each try to shoot the other player's
 ship.  Missiles are affected by the gravity of the intervening planets.  It
-is based on a game I played when I was much younger, although I can't remember
-its name.
+is based on an [Acorn Archimedes](https://en.wikipedia.org/wiki/Acorn_Archimedes)
+game called Planet Warfare that I played when I was much younger.
 
 ![Peltar screenshot](https://repository-images.githubusercontent.com/415364809/75c1dfef-ab2a-42e3-9ef4-18559ae0aa8a)
 
