@@ -557,6 +557,16 @@ bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
 }
 
 /**
+ * Get terminal width.
+ *
+ * \return terminal width in characters.
+ */
+static int cli__terminal_width(void)
+{
+	return 80;
+}
+
+/**
  * Print an entry's description, with a given indent.
  *
  * The indent is assumed to already be applied for the first line of the
@@ -568,7 +578,8 @@ bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
 static void cli__print_description(const struct cli_table_entry *entry,
 		int indent)
 {
-	int avail = (indent > 80) ? 0 : 80 - indent;
+	int terminal_width = cli__terminal_width();
+	int avail = (indent > terminal_width) ? 0 : terminal_width - indent;
 	int space = avail;
 	const char *desc = entry->d;
 
