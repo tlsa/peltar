@@ -5,8 +5,10 @@ Peltar: 2D gravity-based space combat game
 
 Peltar is a game for two players who must each try to shoot the other player's
 ship.  Missiles are affected by the gravity of the intervening planets.  It
-is based on an [Acorn Archimedes](https://en.wikipedia.org/wiki/Acorn_Archimedes)
-game called Planet Warfare that I played when I was much younger.
+is based on an
+[Acorn Archimedes](https://en.wikipedia.org/wiki/Acorn_Archimedes) game called
+[Planet Warfare](https://github.com/tlsa/peltar/issues/5#issuecomment-955704718)
+that I played when I was much younger.
 
 ![Peltar screenshot](https://repository-images.githubusercontent.com/415364809/75c1dfef-ab2a-42e3-9ef4-18559ae0aa8a)
 
@@ -20,8 +22,8 @@ and I wanted to experiment with making a fixed-point
 [Perlin noise](https://en.wikipedia.org/wiki/Perlin_noise) generator.
 
 I also had an idea for rendering 3D spheres using 2D techniques.  (Basically
-drawing a circle and indexing into a texture with a bit of maths to select
-a pixel colour that would give the illusion of 3D.)
+drawing a circle and indexing into a texture with a bit of lookup-tabled maths
+to select a pixel colour that would give the illusion of 3D.)
 
 It is unfinished, although it is playable.  Most of what remains to do is
 main menu, setting up a game, score keeping, etc.
