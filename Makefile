@@ -3,7 +3,7 @@ CC=gcc
 SOURCE_DIRS_COMMON := src/lib src/lib/texture src/noise
 SOURCE_DIRS_PELTAR := src
 SOURCE_DIRS_TEST := test
-CFLAGS := -I.. `sdl-config --cflags` -Wall -Wextra -std=c99 -g
+CFLAGS := -I.. `sdl-config --cflags` -Wall -Wextra -std=c99 -pedantic -g
 LFLAGS := `sdl-config --libs` -lSDL_image -lm -g
 OFLAGS := -O3
 
