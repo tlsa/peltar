@@ -53,7 +53,7 @@ static inline bool peltar_do_stuff(SDL_Surface* screen, struct game *g)
 	return true;
 }
 
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
 	SDL_Surface *screen;
 	SDL_Event event;
@@ -63,7 +63,7 @@ int main(int argc, const char *argv[])
 	int delay;
 
 	/* Override default options with any command line args */
-	if (!cli_parse(&cli, argc, argv)) {
+	if (!cli_parse(&cli, argc, (void *)argv)) {
 		cli_help(&cli, argv[0]);
 		return EXIT_FAILURE;
 	}

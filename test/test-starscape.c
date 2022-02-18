@@ -78,7 +78,7 @@ const struct cli_table cli = {
 	.count = CLI_ARRAY_LEN(cli_entries),
 };
 
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
 	SDL_Surface *screen;
 	SDL_Event event;
@@ -86,7 +86,7 @@ int main(int argc, const char *argv[])
 	unsigned int t = 0;
 	int keypress = 0;
 
-	if (!cli_parse(&cli, argc, argv)) {
+	if (!cli_parse(&cli, argc, (void *)argv)) {
 		cli_help(&cli, argv[0]);
 		return EXIT_FAILURE;
 	}
