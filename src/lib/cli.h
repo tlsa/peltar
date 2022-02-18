@@ -26,7 +26,8 @@
  * CLI argument type.
  */
 enum cli_arg_type {
-	CLI_BOOL,   /**< Has no value; presence of flag indicates true, */
+	CLI_CMD,    /**< A sub-command. Must match long argument name. */
+	CLI_BOOL,   /**< Has no value; presence of flag indicates true. */
 	CLI_INT,    /**< Has signed integer value. */
 	CLI_UINT,   /**< Has unsigned integer value. */
 	CLI_STRING, /**< Has string value. */

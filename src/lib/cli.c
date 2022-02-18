@@ -121,6 +121,13 @@ static bool cli__parse_value(
 		size_t *pos)
 {
 	switch (entry->t) {
+	case CLI_CMD:
+		if (strcmp(arg + *pos, entry->l) == 0) {
+			*pos += strlen(arg);
+			return true;
+		}
+		return false;
+
 	case CLI_INT:
 		return cli__parse_value_int(arg, entry->v.i, pos);
 
@@ -636,8 +643,13 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 					(required == cli->min_positional) ?
 					" [" : " ";
 
-				fprintf(stderr, "%s<%s>", punctuation,
-						cli->entries[i].l);
+				if (cli->entries[i].t == CLI_CMD) {
+					fprintf(stderr, "%s%s", punctuation,
+							cli->entries[i].l);
+				} else {
+					fprintf(stderr, "%s<%s>", punctuation,
+							cli->entries[i].l);
+				}
 				required++;
 			}
 		}
