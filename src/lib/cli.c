@@ -668,7 +668,7 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 				required++;
 			}
 		}
-		if (required == pcount) {
+		if (required == pcount && required > cli->min_positional) {
 			fprintf(stderr, "]");
 		}
 	}
