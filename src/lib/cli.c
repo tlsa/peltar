@@ -523,6 +523,16 @@ static void cli__count(const struct cli_table *cli,
 	}
 }
 
+static inline bool cli__is_negative(const char *arg)
+{
+	int64_t i;
+	size_t pos = 0;
+
+	return cli__parse_value_int(arg, &i, &pos)
+			&& pos == strlen(arg)
+			&& i < 0;
+}
+
 /* Documented in cli.h */
 bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
 {
@@ -542,6 +552,14 @@ bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
 				ret = cli__parse_long(cli, argc, argv, &i);
 			} else {
 				ret = cli__parse_short(cli, argc, argv, &i);
+				if (ret != true) {
+					if (cli__is_negative(argv[i])) {
+						pos_inc = 1;
+						ret = cli__parse_positional(
+								cli, argv[i],
+								pos_count);
+					}
+				}
 			}
 		} else {
 			pos_inc = 1;
