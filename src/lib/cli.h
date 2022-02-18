@@ -30,7 +30,18 @@ enum cli_arg_type {
 	CLI_BOOL,   /**< Has no value; presence of flag indicates true. */
 	CLI_INT,    /**< Has signed integer value. */
 	CLI_UINT,   /**< Has unsigned integer value. */
+	CLI_ENUM,   /**< Has enumeration value. */
 	CLI_STRING, /**< Has string value. */
+};
+
+struct cli_str_val {
+	const char *str;
+	int64_t val;
+};
+
+struct cli_enum {
+	const struct cli_str_val *desc;
+	int64_t *e; /**< Location to store \ref CLI_ENUM value. */
 };
 
 /**
@@ -46,6 +57,7 @@ struct cli_table_entry {
 		int64_t *i;     /**< Location to store \ref CLI_INT value. */
 		uint64_t *u;    /**< Location to store \ref CLI_UINT value. */
 		const char **s; /**< Location to store \ref CLI_STRING value. */
+		struct cli_enum e;
 	} v; /**< Where to store type-specific values. */
 	const char *d; /**< Description. */
 };

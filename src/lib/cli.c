@@ -90,6 +90,32 @@ static bool cli__parse_value_uint(
 }
 
 /**
+ * Parse an enum value from an argument.
+ *
+ * \param[in]     str  String containing value to parse.
+ * \param[out]    e    Enum details.
+ * \param[in,out] pos  Current position in str, updated on exit.
+ * \return true on success, or false otherwise.
+ */
+static bool cli__parse_value_enum(
+		const char *str,
+		const struct cli_enum *e,
+		size_t *pos)
+{
+	str += *pos;
+	*pos += strlen(str);
+
+	for (const struct cli_str_val *sv = e->desc; sv->str != NULL; sv++) {
+		if (strcmp(str, sv->str) == 0) {
+			*e->e = sv->val;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Parse a string value from an argument.
  *
  * \param[in]     str  String containing value to parse.
@@ -133,6 +159,9 @@ static bool cli__parse_value(
 
 	case CLI_UINT:
 		return cli__parse_value_uint(arg, entry->v.u, pos);
+
+	case CLI_ENUM:
+		return cli__parse_value_enum(arg, &entry->v.e, pos);
 
 	case CLI_STRING:
 		return cli__parse_value_string(arg, entry->v.s, pos);
@@ -444,10 +473,11 @@ static const char *cli__string_from_type(enum cli_arg_type type)
 		[CLI_BOOL]   = "",
 		[CLI_INT]    = "INT",
 		[CLI_UINT]   = "UINT",
+		[CLI_ENUM]   = "ENUM",
 		[CLI_STRING] = "STRING",
 	};
 
-	if (type >= CLI_ARRAY_LEN(strings)) {
+	if (type >= CLI_ARRAY_LEN(strings) || strings[type] == NULL) {
 		return "";
 	}
 
