@@ -55,7 +55,7 @@ static bool cli__parse_value_int(
 	}
 
 	*i = (uint32_t)temp;
-	*pos += end - str;
+	*pos += (size_t)(end - str);
 	return true;
 }
 
@@ -85,7 +85,7 @@ static bool cli__parse_value_uint(
 	}
 
 	*u = (uint32_t)temp;
-	*pos += end - str;
+	*pos += (size_t)(end - str);
 	return true;
 }
 
@@ -454,9 +454,9 @@ static const char *cli__string_from_type(enum cli_arg_type type)
  * \param[in]  adjustment  Amount to modify length of string by (bytes).
  * \param[out] len         Returns the maximum of existing and this length.
  */
-static void cli__max_len(const char *str, int adjustment, int *len)
+static void cli__max_len(const char *str, size_t adjustment, size_t *len)
 {
-	int str_len = strlen(str) + adjustment;
+	size_t str_len = strlen(str) + adjustment;
 
 	if (str_len > *len) {
 		*len = str_len;
@@ -474,11 +474,11 @@ static void cli__max_len(const char *str, int adjustment, int *len)
  * \param[out] phas_desc  Returns number of positional args with descriptions.
  */
 static void cli__count(const struct cli_table *cli,
-		int *count,
-		int *pcount,
-		int *max_len,
-		int *pmax_len,
-		int *phas_desc)
+		size_t *count,
+		size_t *pcount,
+		size_t *max_len,
+		size_t *pmax_len,
+		size_t *phas_desc)
 {
 	if (count != NULL) *count = 0;
 	if (pcount != NULL) *pcount = 0;
@@ -561,7 +561,7 @@ bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
  *
  * \return terminal width in characters.
  */
-static int cli__terminal_width(void)
+static size_t cli__terminal_width(void)
 {
 	return 80;
 }
@@ -576,18 +576,20 @@ static int cli__terminal_width(void)
  * \param[in] indent  The number of spaces to pad the left margin with.
  */
 static void cli__print_description(const struct cli_table_entry *entry,
-		int indent)
+		size_t indent)
 {
-	int terminal_width = cli__terminal_width();
-	int avail = (indent > terminal_width) ? 0 : terminal_width - indent;
-	int space = avail;
+	size_t terminal_width = cli__terminal_width();
+	size_t avail = (indent > terminal_width) ? 0 : terminal_width - indent;
+	size_t space = avail;
 	const char *desc = entry->d;
 
 	if (desc != NULL) {
 		while (*desc != '\0') {
-			int word_len = strcspn(desc, " \n\t");
+			size_t word_len = strcspn(desc, " \n\t");
 			if (word_len <= space || space == avail) {
-				fprintf(stderr, "%*.*s", word_len, word_len, desc);
+				fprintf(stderr, "%*.*s",
+						(int)word_len,
+						(int)word_len, desc);
 				desc += word_len;
 				if (word_len <= space) {
 					space -= word_len;
@@ -597,7 +599,7 @@ static void cli__print_description(const struct cli_table_entry *entry,
 					space--;
 				}
 			} else {
-				fprintf(stderr, "\n%*s", indent, "");
+				fprintf(stderr, "\n%*s", (int)indent, "");
 				space = avail;
 			}
 			desc += strspn(desc, " \n\t");
@@ -610,11 +612,11 @@ static void cli__print_description(const struct cli_table_entry *entry,
 /* Documented in cli.h */
 void cli_help(const struct cli_table *cli, const char *prog_name)
 {
-	int count;
-	int pcount;
-	int max_len;
-	int pmax_len;
-	int phas_desc;
+	size_t count;
+	size_t pcount;
+	size_t max_len;
+	size_t pmax_len;
+	size_t phas_desc;
 	size_t required = 0;
 	enum {
 		ARG_PROG_NAME,
@@ -639,7 +641,7 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 				required++;
 			}
 		}
-		if ((int)required == pcount) {
+		if (required == pcount) {
 			fprintf(stderr, "]");
 		}
 	}
@@ -657,7 +659,8 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 
 			if (cli__entry_is_positional(entry)) {
 				fprintf(stderr, "  %*.*s  ",
-						pmax_len, pmax_len,
+						(int)pmax_len,
+						(int)pmax_len,
 						entry->l);
 				cli__print_description(entry, pmax_len + 4);
 				fprintf(stderr, "\n");
@@ -671,8 +674,8 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 		for (size_t i = 0; i < cli->count; i++) {
 			const struct cli_table_entry *entry = &cli->entries[i];
 			const char *type_str;
-			int type_len;
-			int arg_len;
+			size_t type_len;
+			size_t arg_len;
 
 			if (cli__entry_is_positional(entry)) {
 				continue;
@@ -689,7 +692,8 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 			arg_len = strlen(entry->l);
 
 			fprintf(stderr, "  --%s %s%*.s  ", entry->l, type_str,
-					max_len - arg_len - type_len, "");
+					(int)(max_len - arg_len - type_len),
+					"");
 			cli__print_description(entry, max_len + 11);
 			fprintf(stderr, "\n");
 		}
