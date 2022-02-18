@@ -157,7 +157,7 @@ static bool cli__parse_value(
  * \return true on success, or false otherwise.
  */
 static bool cli__parse_argv_value(const struct cli_table_entry *entry,
-		int argc, char *argv[],
+		int argc, const char **argv,
 		int arg_pos, size_t *pos)
 {
 	const char *arg = argv[arg_pos];
@@ -219,7 +219,7 @@ static const struct cli_table_entry *cli__lookup_short(
  * \return true on success, or false otherwise.
  */
 static bool cli__handle_arg_value(const struct cli_table_entry *entry,
-		int argc, char *argv[], int *arg_pos, size_t pos, char sep)
+		int argc, const char **argv, int *arg_pos, size_t pos, char sep)
 {
 	const char *arg = argv[*arg_pos];
 	size_t orig_pos;
@@ -267,7 +267,7 @@ static bool cli__handle_arg_value(const struct cli_table_entry *entry,
  * \return true on success, or false otherwise.
  */
 static bool cli__parse_short(const struct cli_table *cli,
-		int argc, char *argv[], int *arg_pos)
+		int argc, const char **argv, int *arg_pos)
 {
 	const char *arg = argv[*arg_pos];
 	size_t pos = 1;
@@ -342,7 +342,7 @@ static const struct cli_table_entry *cli__lookup_long(
  * \return true on success, or false otherwise.
  */
 static bool cli__parse_long(const struct cli_table *cli,
-		int argc, char *argv[], int *arg_pos)
+		int argc, const char **argv, int *arg_pos)
 {
 	const struct cli_table_entry *entry;
 	const char *arg = argv[*arg_pos];
@@ -534,7 +534,7 @@ static inline bool cli__is_negative(const char *arg)
 }
 
 /* Documented in cli.h */
-bool cli_parse(const struct cli_table *cli, int argc, char *argv[])
+bool cli_parse(const struct cli_table *cli, int argc, const char **argv)
 {
 	size_t pos_count = 0;
 	enum {

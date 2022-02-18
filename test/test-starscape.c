@@ -78,7 +78,7 @@ const struct cli_table cli = {
 	.count = CLI_ARRAY_LEN(cli_entries),
 };
 
-int main(int argc, char* argv[])
+int main(int argc, const char *argv[])
 {
 	SDL_Surface *screen;
 	SDL_Event event;

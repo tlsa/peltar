@@ -53,7 +53,7 @@ static inline bool peltar_do_stuff(SDL_Surface* screen, struct game *g)
 	return true;
 }
 
-int main(int argc, char* argv[])
+int main(int argc, const char *argv[])
 {
 	SDL_Surface *screen;
 	SDL_Event event;

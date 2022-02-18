@@ -39,10 +39,10 @@ const struct cli_table cli = {
 
 struct cli_test {
 	bool expected;
-	char **argv;
+	const char **argv;
 };
 
-#define T(_e, ...) { .expected = _e, .argv = (char *[]){__VA_ARGS__, NULL}, }
+#define T(_e, ...) { .expected = _e, .argv = (const char *[]){__VA_ARGS__, NULL}, }
 
 struct cli_test tests[] = {
 	T(true , "./peltar", "-w500", "-h500", "out.png" ),
@@ -85,7 +85,7 @@ struct cli_test tests[] = {
 	T(false, "./peltar", "-pf", "out.png" ),
 };
 
-static inline int get_argc(char **argv)
+static inline int get_argc(const char **argv)
 {
 	int ret = 0;
 

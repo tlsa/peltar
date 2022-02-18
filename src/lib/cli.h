@@ -67,7 +67,7 @@ struct cli_table {
  * \param[in]  argv  String vector containing command line arguments.
  * \return true on success, false on error.
  */
-bool cli_parse(const struct cli_table *cli, int argc, char *argv[]);
+bool cli_parse(const struct cli_table *cli, int argc, const char **argv);
 
 /**
  * Print usage and help output.
