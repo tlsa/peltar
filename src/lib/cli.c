@@ -650,9 +650,6 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 	cli__count(cli, &count, &pcount, &max_len, &pmax_len, &phas_desc);
 
 	fprintf(stderr, "\nUsage: %s", prog_name);
-	if (count > 0) {
-		fprintf(stderr, " [options]");
-	}
 
 	if (pcount > 0) {
 		for (size_t i = 0; i < cli->count; i++) {
@@ -675,6 +672,11 @@ void cli_help(const struct cli_table *cli, const char *prog_name)
 			fprintf(stderr, "]");
 		}
 	}
+
+	if (count > 0) {
+		fprintf(stderr, " [options]");
+	}
+
 	fprintf(stderr, "\n\n");
 
 	if (phas_desc > 0) {
