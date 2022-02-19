@@ -54,7 +54,7 @@ static bool cli__parse_value_int(
 		return false;
 	}
 
-	*i = (uint32_t)temp;
+	*i = (int64_t)temp;
 	*pos += (size_t)(end - str);
 	return true;
 }
@@ -84,7 +84,7 @@ static bool cli__parse_value_uint(
 		return false;
 	}
 
-	*u = (uint32_t)temp;
+	*u = (uint64_t)temp;
 	*pos += (size_t)(end - str);
 	return true;
 }
