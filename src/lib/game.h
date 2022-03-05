@@ -9,10 +9,12 @@ struct game;
 
 void game_init(void);
 
-bool game_create(struct game **game, int width, int height);
+bool game_create(struct game **game, int width, int height,
+		const SDL_Surface *screen);
 void game_free(struct game *game);
 
-bool game_handle_key(struct game *g, SDL_Event *event);
+bool game_handle_key(struct game *g, SDL_Event *event,
+		const SDL_Surface *screen);
 bool game_handle_mouse(struct game *g, SDL_Event *event);
 
 /* render what's changed */

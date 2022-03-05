@@ -18,7 +18,8 @@ struct player {
 	bool show_direction;
 
 	char *name;
-	uint32_t colour;
+	uint32_t render_colour;
+	struct colour colour;
 
 	int strength;
 
@@ -41,13 +42,13 @@ struct player {
 };
 
 
-bool player_create(struct player **player, uint32_t colour)
+bool player_create(struct player **player, struct colour c)
 {
 	*player = malloc(sizeof(struct player));
 	if (*player == NULL)
 		return false;
 
-	(*player)->colour = colour;
+	(*player)->colour = c;
 	(*player)->name = NULL;
 	(*player)->strength = MAX_STRENGTH / 2;
 	(*player)->show_direction = false;
@@ -73,13 +74,14 @@ void player_free(struct player *player)
 }
 
 
-bool player_setup_graphics(struct player *p, int size)
+bool player_setup_graphics(struct player *p, int size,
+		const SDL_Surface *screen)
 {
 	if (!planet_create(&p->planet, size)) {
 		return false;
 	}
-		
-	if (!planet_generate_texture_man_made(p->planet, p->colour)) {
+
+	if (!planet_generate_texture_man_made(p->planet, p->colour, screen)) {
 		planet_free(p->planet);
 		return false;
 	}
@@ -94,6 +96,7 @@ bool player_setup_graphics(struct player *p, int size)
 
 	p->size = planet_get_size(p->planet);
 	p->size_scaled = planet_get_size_scaled(p->planet);
+	colour_texture_to_screen(screen, &p->colour, 1, &p->render_colour);
 
 	planet_set_lighting(p->planet, true);
 
@@ -130,9 +133,9 @@ int player_get_size_scaled(struct player *p)
 }
 
 
-uint32_t player_get_colour(struct player *p)
+uint32_t player_get_render_colour(struct player *p)
 {
-	return p->colour;
+	return p->render_colour;
 }
 
 
@@ -191,7 +194,8 @@ void player_render_direction(struct player *p,
 					p->direction_size);
 		}
 
-		draw_target_7x7(screen, direction_x, direction_y, p->colour);
+		draw_target_7x7(screen, direction_x, direction_y,
+				p->render_colour);
 
 		p->direction_x = direction_x - size / 2;
 		p->direction_y = direction_y - size / 2;
@@ -229,7 +233,8 @@ void player_render_direction_scaled(struct player *p,
 					p->direction_size);
 		}
 
-		draw_target_3x3(screen, direction_x, direction_y, p->colour);
+		draw_target_3x3(screen, direction_x, direction_y,
+				p->render_colour);
 
 		p->direction_x = direction_x - size / 2;
 		p->direction_y = direction_y - size / 2;
@@ -317,9 +322,9 @@ void player_render_strength(struct player *p, SDL_Surface *screen,
 {
 	int split = w * p->strength / MAX_STRENGTH;
 
-	draw_block(screen, x, y, split, h, p->colour);
+	draw_block(screen, x, y, split, h, p->render_colour);
 
 	draw_block(screen, x + split, y, w - split, h,
-			(((p->colour & 0xff00ff) >> 1) & 0xff00ff) |
-			(((p->colour & 0x00ff00) >> 1) & 0x00ff00));
+			(((p->render_colour & 0xff00ff) >> 1) & 0xff00ff) |
+			(((p->render_colour & 0x00ff00) >> 1) & 0x00ff00));
 }

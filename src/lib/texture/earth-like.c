@@ -112,52 +112,51 @@ static inline void texture_earth_like_get_thresholds(int y, int r,
 
 }
 
-static inline uint32_t texture_earth_like_forest(const struct point_3d p,
+static inline struct colour texture_earth_like_forest(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint8_t texture, texture2;
-	uint32_t res;
+	uint8_t texture;
+	struct colour res;
 
 	(void)(s);
 
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 16;
 	texture += 255 / 8 + 255 / 32;
-	texture2 = texture / 2;
-	res = texture2 / 2 + (texture << 8) + (texture2 << 16);
 
-#ifdef _RED_BLUE_SWAP
-	return colours_swap_rb(res);
-#else
+	res.r = texture / 4;
+	res.g = texture;
+	res.b = texture / 2;
+	res.a = 0;
+
 	return res;
-#endif
 }
 
-static inline uint32_t texture_earth_like_grass(const struct point_3d p,
+static inline struct colour texture_earth_like_grass(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint8_t texture, texture2;
-	uint32_t res;
+	uint8_t texture;
+	struct colour res;
 
 	(void)(s);
 
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 8;
 	texture += 255 / 8 + 255 / 16 + 255 / 32 + 255 / 64;
-	texture2 = texture / 2;
-	res = texture2 / 2 + (texture << 8) + (texture2 << 16);
 
-#ifdef _RED_BLUE_SWAP
-	return colours_swap_rb(res);
-#else
+	res.r = texture / 4;
+	res.g = texture;
+	res.b = texture / 2;
+	res.a = 0;
+
 	return res;
-#endif
 }
 
-static inline uint32_t texture_earth_like_desert(const struct point_3d p,
+static inline struct colour texture_earth_like_desert(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint32_t res, value, texture;
+	uint32_t value, texture;
+	struct colour res;
 
 	value = noise_get_value_at_pos_flipflop(p, seeds[3], s - 1);
 
@@ -173,7 +172,7 @@ static inline uint32_t texture_earth_like_desert(const struct point_3d p,
 
 	} else if (value < THRESH_2) {
 		/* Transition desert */
-		uint32_t light, dark;
+		struct colour light, dark;
 		uint64_t wide;
 		texture = noise_get_value_at_pos_standard(p, seeds[0], 3) >>
 				(32 - FIX_SHIFT);
@@ -241,12 +240,13 @@ static inline void texture_earth_like_get_terrain_type(uint32_t value,
 	}
 }
 
-uint32_t texture_earth_like_planet_32bpp(const struct point_3d p,
+struct colour texture_earth_like_planet_32bpp(const struct point_3d p,
 		const uint32_t seeds[4], int s, uint32_t radius, uint32_t y)
 {
-	uint32_t res, value, pos;
-	int levels[4];
 	enum earth_like_terrain_type type;
+	uint32_t value, pos;
+	struct colour res;
+	int levels[4];
 
 	/* Get texture noise value for pixel */
 	value = noise_get_value_at_pos_flipflop(p, seeds[0], s);

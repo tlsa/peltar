@@ -726,7 +726,8 @@ static inline struct point_3d planet_point_from_texture_coord(
 	return ret;
 }
 
-bool planet_generate_texture(struct planet *planet)
+bool planet_generate_texture(struct planet *planet,
+		const SDL_Surface *screen)
 {
 	struct planet_internals *p = &planet->big;
 	int x, y, i;
@@ -737,7 +738,8 @@ bool planet_generate_texture(struct planet *planet)
 	double scaled_pi = M_PI / (double)(half_w);
 	int *sine;
 	struct point_3d pt;
-	uint32_t prev, next, sea_colour;
+	struct colour *texture = (void *)p->texture;
+	struct colour prev, next, sea_colour;
 
 	/* Allocate sine LUT */
 	sine = malloc((half_w) * (sizeof(int)));
@@ -771,8 +773,9 @@ bool planet_generate_texture(struct planet *planet)
 			/* Get 3D location of this texture coordinate */
 			pt = planet_point_from_texture_coord(x, y, r, h,
 					sine, half_w);
-			p->texture[i++] = texture_earth_like_planet_32bpp(
+			texture[i] = texture_earth_like_planet_32bpp(
 					pt, seeds, s, r, y);
+			i++;
 		}
 	}
 
@@ -782,43 +785,47 @@ bool planet_generate_texture(struct planet *planet)
 	i = 0;
 	for (y = 0; y < p->texture_h; y++) {
 		for (x = 0; x < p->texture_w; x++) {
-			if (p->texture[i] != sea_colour) {
+			if (colour_different(&texture[i], &sea_colour)) {
 				int m = 0;
 				if (x == 0) {
-					prev = p->texture[i + p->texture_w - 1];
-					next = p->texture[i + 1];
+					prev = texture[i + p->texture_w - 1];
+					next = texture[i + 1];
 				} else if (x == p->texture_w - 1) {
-					prev = p->texture[i - 1];
-					next = p->texture[i - p->texture_w + 1];
+					prev = texture[i - 1];
+					next = texture[i - p->texture_w + 1];
 				} else {
-					prev = p->texture[i - 1];
-					next = p->texture[i + 1];
+					prev = texture[i - 1];
+					next = texture[i + 1];
 				}
 
 				if (y > 0 && y < p->texture_h - 1) {
-					if (p->texture[i - p->texture_w] ==
-							sea_colour)
+					if (!colour_different(
+							&texture[i - p->texture_w],
+							&sea_colour))
 						m += 6;
-					if (p->texture[i + p->texture_w] ==
-							sea_colour)
+					if (!colour_different(
+							&texture[i + p->texture_w],
+							&sea_colour))
 						m += 6;
 				}
 
-				if (next == sea_colour && prev == sea_colour) {
+				if (!colour_different(&next, &sea_colour) &&
+				    !colour_different(&prev, &sea_colour)) {
 					/* Sea on both sides of pixel */
 					m += 14;
-					p->texture[i] =
+					texture[i] =
 						colour_interpolate(
-							p->texture[i],
+							texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
-				} else if (next == sea_colour ||
-						prev == sea_colour) {
+				} else if (
+				    !colour_different(&next, &sea_colour) ||
+				    !colour_different(&prev, &sea_colour)) {
 					/* Sea on one side of pixel */
 					m += 8;
-					p->texture[i] =
+					texture[i] =
 						colour_interpolate(
-							p->texture[i],
+							texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
 				}
@@ -829,13 +836,18 @@ bool planet_generate_texture(struct planet *planet)
 
 	free(sine);
 
+	colour_texture_to_screen(screen, texture,
+			p->texture_w * p->texture_h,
+			p->texture);
+
 	planet_make_small_texture(planet);
 
 	return true;
 }
 
 
-bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
+bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
+		const SDL_Surface *screen)
 {
 	struct planet_internals *p = &planet->big;
 	int x, y, i;
@@ -847,6 +859,7 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 	int *sine;
 	struct point_3d pt;
 	struct cellular_texture *cells;
+	struct colour *texture = (void *)p->texture;
 	peltar_fixed dist, max_dist;
 
 	/* Allocate sine LUT */
@@ -905,13 +918,17 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 			dist = p->texture[i];
 			pt = planet_point_from_texture_coord(x, y, r, h,
 					sine, half_w);
-			p->texture[i++] = texture_man_made_32bpp(pt, dist,
-					max_dist, seeds, s, colour);
+			texture[i++] = texture_man_made_32bpp(pt, dist,
+					max_dist, seeds, s, c);
 		}
 	}
 
 	cellular_texture_free(cells);
 	free(sine);
+
+	colour_texture_to_screen(screen, texture,
+			p->texture_w * p->texture_h,
+			p->texture);
 
 	planet_make_small_texture(planet);
 

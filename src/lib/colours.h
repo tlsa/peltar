@@ -2,27 +2,22 @@
 #ifndef _PELTAR_COLOURS_H_
 #define _PELTAR_COLOURS_H_
 
-/* Comment/uncomment to set red/blue channel swapping */
-//#define _RED_BLUE_SWAP
+#include "fixed-point.h"
 
-#ifndef _RED_BLUE_SWAP
-#define DESERT_LIGHT_1 0xffffd3
-#define DESERT_LIGHT_2 0xf0ae7c
-#define DESERT_DARK_1  0xdcbb95
-#define DESERT_DARK_2  0x9f6a48
-#define SEA_COLOUR ((0x9 << 8) + 0x30)
-#else
-#define DESERT_LIGHT_1 0xd3ffff
-#define DESERT_LIGHT_2 0x7caef0
-#define DESERT_DARK_1  0x95bbdc
-#define DESERT_DARK_2  0x486a9f
-#define SEA_COLOUR ((0x9 << 8) + (0x30 << 16))
-#endif
+struct colour {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+	uint8_t a;
+};
 
-static inline uint32_t colours_swap_rb(uint32_t c)
-{
-	return ((c & 0xff) << 16) | (c & 0xff00) | ((c & 0xff0000) >> 16);
-}
+#define COLOUR_TO_U32(_c) (*(uint32_t *)(&_c))
+
+#define DESERT_LIGHT_1 (struct colour) { .r = 0xff, .g = 0xff, .b = 0xd3, }
+#define DESERT_LIGHT_2 (struct colour) { .r = 0xf0, .g = 0xae, .b = 0x7c, }
+#define DESERT_DARK_1  (struct colour) { .r = 0xdc, .g = 0xbb, .b = 0x95, }
+#define DESERT_DARK_2  (struct colour) { .r = 0x9f, .g = 0x6a, .b = 0x48, }
+#define SEA_COLOUR     (struct colour) {            .g = 0x09, .b = 0x30, }
 
 /**
  * Interpolate a colour channel.
@@ -56,30 +51,43 @@ static inline uint32_t colour_interpolate_channel(
  * \param[in]  f  Interpolation fraction. Fixed point value between 0 and 1.
  * \return Interpolated colour,
  */
-static inline uint32_t colour_interpolate(
-		uint32_t a, uint32_t b, uint32_t f)
+static inline struct colour colour_interpolate(
+		const struct colour a,
+		const struct colour b,
+		uint32_t f)
 {
-	uint32_t res;
-	uint8_t r1, g1, b1;
-	uint8_t r2, g2, b2;
-
-	r1 = (a & 0xff0000) >> 16;
-	r2 = (b & 0xff0000) >> 16;
-
-	g1 = (a & 0xff00) >> 8;
-	g2 = (b & 0xff00) >> 8;
-
-	b1 = (a & 0xff);
-	b2 = (b & 0xff);
-
-	r1 = (colour_interpolate_channel(r1, r2, f) & 0xff);
-	g1 = (colour_interpolate_channel(g1, g2, f) & 0xff);
-	b1 = (colour_interpolate_channel(b1, b2, f) & 0xff);
-
-	res = b1 + (g1 << 8) + (r1 << 16);
+	struct colour res = {
+		.r = colour_interpolate_channel(a.r, b.r, f),
+		.g = colour_interpolate_channel(a.g, b.g, f),
+		.b = colour_interpolate_channel(a.b, b.b, f),
+	};
 
 	return res;
 }
 
-#endif
+static inline bool colour_different(
+		const struct colour *a,
+		const struct colour *b)
+{
+	return *((uint32_t*) a) != *((uint32_t*) b);
+}
 
+static inline void colour_texture_to_screen(
+		const SDL_Surface *screen,
+		const struct colour *in,
+		uint32_t count,
+		uint32_t *out)
+{
+	uint8_t r_shift = screen->format->Rshift;
+	uint8_t g_shift = screen->format->Gshift;
+	uint8_t b_shift = screen->format->Bshift;
+
+	for (size_t i = 0; i < count; i++) {
+		out[i] =
+			(in[i].r << r_shift) |
+			(in[i].g << g_shift) |
+			(in[i].b << b_shift);
+	}
+}
+
+#endif

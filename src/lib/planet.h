@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <SDL.h>
 
+#include "colours.h"
 
 struct planet;
 
@@ -15,8 +16,10 @@ void planet_free(struct planet *p);
 
 bool planet_get_texture_from_file(struct planet *planet, const char *filename,
 		SDL_Surface *screen);
-bool planet_generate_texture(struct planet *planet);
-bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour);
+bool planet_generate_texture(struct planet *planet,
+		const SDL_Surface *screen);
+bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
+		const SDL_Surface *screen);
 
 void planet_update_render(struct planet *p, SDL_Surface *screen,
 		int screen_x, int screen_y);

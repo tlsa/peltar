@@ -382,7 +382,8 @@ void level_arrange_planets(int sizes[PLANETS_MAX], int size,
 }
 
 static bool level_player_setup(struct level *level,
-		int width, int height, int player_size)
+		int width, int height, int player_size,
+		const SDL_Surface *screen)
 {
 	level->player[PLAYERS_1][NORMAL].x = 1 * player_size / 4;
 	level->player[PLAYERS_2][NORMAL].x = width - 5 * player_size / 4;
@@ -390,7 +391,7 @@ static bool level_player_setup(struct level *level,
 	for (int i = 0; i < PLAYERS_MAX; i++) {
 		struct player *p = level->p[i];
 
-		if (!player_setup_graphics(p, player_size)) {
+		if (!player_setup_graphics(p, player_size, screen)) {
 			return false;
 		}
 
@@ -416,7 +417,8 @@ static bool level_player_setup(struct level *level,
 	return true;
 }
 
-static bool level_create_details(struct level *level, int width, int height)
+static bool level_create_details(struct level *level, int width, int height,
+		const SDL_Surface *screen)
 {
 	int i;
 	int sizes[PLANETS_MAX]; /* max no of planets */
@@ -440,7 +442,7 @@ static bool level_create_details(struct level *level, int width, int height)
 		return false;
 	}
 
-	if (!level_player_setup(level, width, height, player_size)) {
+	if (!level_player_setup(level, width, height, player_size, screen)) {
 		return false;
 	}
 
@@ -485,7 +487,7 @@ static bool level_create_details(struct level *level, int width, int height)
 			return false;
 		}
 		
-		if (!planet_generate_texture(level->planets[i])) {
+		if (!planet_generate_texture(level->planets[i], screen)) {
 			level->nplanets = i;
 			return false;
 		}
@@ -569,7 +571,7 @@ static void level_setup_projectile_bounds(struct level *l)
 }
 
 bool level_create(struct level **level, struct player *p1, struct player *p2,
-		int width, int height)
+		int width, int height, const SDL_Surface *screen)
 {
 	*level = malloc(sizeof(struct level));
 	if (*level == NULL)
@@ -577,9 +579,6 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 
 	(*level)->p[PLAYERS_1] = p1;
 	(*level)->p[PLAYERS_2] = p2;
-
-	(*level)->colour[PLAYERS_1] = player_get_colour(p1);
-	(*level)->colour[PLAYERS_2] = player_get_colour(p2);
 
 	(*level)->planets = NULL;
 	(*level)->background[NORMAL] = NULL;
@@ -590,10 +589,13 @@ bool level_create(struct level **level, struct player *p1, struct player *p2,
 
 	(*level)->flags = LEV_LIGHTING | LEV_ANIMATION;
 
-	if (!level_create_details(*level, width, height)) {
+	if (!level_create_details(*level, width, height, screen)) {
 		level_free(*level);
 		return false;
 	}
+
+	(*level)->colour[PLAYERS_1] = player_get_render_colour(p1);
+	(*level)->colour[PLAYERS_2] = player_get_render_colour(p2);
 
 	if (!level_create_trails(*level, width, height)) {
 		level_free(*level);
@@ -1112,7 +1114,8 @@ bool level_update_render_full(struct level *l, SDL_Surface *screen)
 	return false;
 }
 
-bool level_handle_key(struct level *l, SDL_Event *event)
+bool level_handle_key(struct level *l, SDL_Event *event,
+		const SDL_Surface *screen)
 {
 	int i;
 	assert(event->type == SDL_KEYDOWN);
@@ -1151,7 +1154,7 @@ bool level_handle_key(struct level *l, SDL_Event *event)
 	case SDLK_t:
 		/* 'T' key: redo planet textures */
 		for (i = 0; i < l->nplanets; i++) {
-			if (!planet_generate_texture(l->planets[i])) {
+			if (!planet_generate_texture(l->planets[i], screen)) {
 				SDL_Quit();
 				exit(EXIT_FAILURE);
 			}

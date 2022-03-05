@@ -97,7 +97,8 @@ int main(int argc, char *argv[])
 
 	if (!game_create(&g,
 			peltar_opts.screen_width,
-			peltar_opts.screen_height)) {
+			peltar_opts.screen_height,
+			screen)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case SDL_KEYDOWN:
-				if (!game_handle_key(g, &event))
+				if (!game_handle_key(g, &event, screen))
 					keypress = 1;
 				break;
 

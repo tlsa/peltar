@@ -110,18 +110,22 @@ int main(int argc, char *argv[])
 
 	SDL_WM_SetCaption("Test: Level creation", "Test: Levels");
 
-	if (!player_create(&p1, 0x001144ff)) {
+	if (!player_create(&p1, (struct colour)
+			{ .r = 0x00, .g = 0x77, .b = 0xff })) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
 
-	if (!player_create(&p2, 0x00ff0000)) {
+	if (!player_create(&p2, (struct colour)
+			{ .r = 0xff, .g = 0x00, .b = 0x00 })) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
 
-	if (!level_create(&l, p1, p2, peltar_opts.screen_width,
-			peltar_opts.screen_height)) {
+	if (!level_create(&l, p1, p2,
+			peltar_opts.screen_width,
+			peltar_opts.screen_height,
+			screen)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
@@ -136,7 +140,7 @@ int main(int argc, char *argv[])
 				keypress = 1;
 				break;
 			case SDL_KEYDOWN:
-				if (!level_handle_key(l, &event))
+				if (!level_handle_key(l, &event, screen))
 					keypress = 1;
 				break;
 			}
