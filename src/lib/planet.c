@@ -460,7 +460,7 @@ static inline void planet_set_pixel_lighting(uint32_t *restrict pixel,
 {
 	/* Set it to colour of appropriate pixel in texture, with shading */
 	*pixel = (((*lighting * (0x00ff00ff & *texture)) >> 8) & 0x00ff00ff) |
-		 (((*lighting * (0x0000ff00 & *texture)) >> 8) & 0x0000ff00);
+		 (((*lighting * (0xff00ff00 & *texture)) >> 8) & 0xff00ff00);
 }
 
 
