@@ -164,7 +164,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			/* Nothing to render */
 			continue;
 
-		/* Get offset to start of pixels within cricle on this row */
+		/* Get offset to start of pixels within circle on this row */
 		line_start = size / 2 - line_length;
 
 		/* Cache angles for row of points in quarter circle */
@@ -177,7 +177,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			 * argument is scaled for acos() LUT size */
 			/* Subtracting 0.5 from adjacent to bring centre columns
 			 * from each half away from each other.
-			 * (Avoid dupication seam down planet centre.) */
+			 * (Avoid duplication seam down planet centre.) */
 			angle = arc_cosine((((adjacent << FIX_SHIFT) -
 					(FIX_MULTIPLE / 2)) / line_length) >>
 					CONV_FIX_TO_LUT);
@@ -226,7 +226,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			 * (Theta's the angle between L and N)
 			 *
 			 * Want lighting to come from left / front, so Ly
-			 * component is 0, so y is irrelevent.
+			 * component is 0, so y is irrelevant.
 			 *
 			 * For easy maths (unit vector), using 8-15-17 triangle
 			 * for lighting:
@@ -365,7 +365,7 @@ static void planet_update_render_flat(struct planet_internals *p,
 	const int *restrict angle_cache = p->angles;
 
 	/* Loop through top left quarter of circle, and render symmetrically
-	 * reflected points on each itteration. */
+	 * reflected points on each iteration. */
 	for (y = 0; y < radius; y++) {
 
 		/* Look up the number of pixels that are within the quarter
@@ -411,7 +411,7 @@ static void planet_update_render_flat(struct planet_internals *p,
 
 			/* Do same to render the two pixels on the right side */
 			/* Angle from other half can be reused as (1 - angle),
-			 * explioting cosine symmetry.  (To map from first
+			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
 			angle = FIX_MULTIPLE - angle - rotation;
 			if (angle < 0)
@@ -485,7 +485,7 @@ static void planet_update_render_lighting(struct planet_internals *p,
 	const Uint8 *restrict l = p->lighting; /* lighting cache index */
 
 	/* Loop through top left quarter of circle, and render symmetrically
-	 * reflected points on each itteration. */
+	 * reflected points on each iteration. */
 	for (y = 0; y < radius; y++) {
 
 		/* Look up the number of pixels that are within the quarter
@@ -533,7 +533,7 @@ static void planet_update_render_lighting(struct planet_internals *p,
 
 			/* Do same to render the two pixels on the right side */
 			/* Angle from other half can be reused as (1 - angle),
-			 * explioting cosine symmetry.  (To map from first
+			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
 			angle = FIX_MULTIPLE - angle - rotation;
 			if (angle < 0)
