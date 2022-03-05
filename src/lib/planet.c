@@ -636,10 +636,10 @@ static void planet_make_small_texture(struct planet *p)
 	for (y = 0; y < p->small.texture_h - 1; y++) {
 		for (x = 0; x < p->small.texture_w - 1; x++) {
 			small[i] = planet_make_small_texture_px(
-					&big[j], 0xff00ff,
+					&big[j], 0x00ff00ff,
 					p->big.texture_w);
 			small[i] |= planet_make_small_texture_px(
-					&big[j], 0x00ff00,
+					&big[j], 0xff00ff00,
 					p->big.texture_w);
 			i++;
 			j += 4;
