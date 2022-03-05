@@ -189,7 +189,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 	}
 
 	/* Allocate memory for lighting cache */
-	p->lighting = malloc(sizeof(int) * 2 * px_count);
+	p->lighting = malloc(sizeof(*p->lighting) * 2 * px_count);
 	if (p->lighting == NULL) {
 		return false;
 	}
