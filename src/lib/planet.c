@@ -726,47 +726,6 @@ static inline struct point_3d planet_point_from_texture_coord(
 	return ret;
 }
 
-static inline uint32_t interpolate_colour(uint32_t a, uint32_t b, uint32_t f)
-{
-	uint64_t difference;
-
-	if (a > b) {
-		difference = a - b;
-
-		return b + ((difference * (FIX_MULTIPLE - f)) / FIX_MULTIPLE);
-	} else {
-		difference = b - a;
-
-		return a + ((difference * f) / FIX_MULTIPLE);
-	}
-}
-
-static inline uint32_t interpolate_colour_32bpp(
-		uint32_t a, uint32_t b, uint32_t f)
-{
-	uint32_t res;
-	uint8_t r1, g1, b1;
-	uint8_t r2, g2, b2;
-
-	r1 = (a & 0xff0000) >> 16;
-	r2 = (b & 0xff0000) >> 16;
-
-	g1 = (a & 0xff00) >> 8;
-	g2 = (b & 0xff00) >> 8;
-
-	b1 = (a & 0xff);
-	b2 = (b & 0xff);
-
-	r1 = (interpolate_colour(r1, r2, f) & 0xff);
-	g1 = (interpolate_colour(g1, g2, f) & 0xff);
-	b1 = (interpolate_colour(b1, b2, f) & 0xff);
-
-	res = b1 + (g1 << 8) + (r1 << 16);
-
-	return res;
-}
-
-
 bool planet_generate_texture(struct planet *planet)
 {
 	struct planet_internals *p = &planet->big;
@@ -849,7 +808,7 @@ bool planet_generate_texture(struct planet *planet)
 					/* Sea on both sides of pixel */
 					m += 14;
 					p->texture[i] =
-						interpolate_colour_32bpp(
+						colour_interpolate(
 							p->texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
@@ -858,7 +817,7 @@ bool planet_generate_texture(struct planet *planet)
 					/* Sea on one side of pixel */
 					m += 8;
 					p->texture[i] =
-						interpolate_colour_32bpp(
+						colour_interpolate(
 							p->texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
