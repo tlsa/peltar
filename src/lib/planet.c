@@ -786,7 +786,6 @@ bool planet_generate_texture(struct planet *planet)
 		return false;
 
 	/* Fill out sine LUT */
-	i = 0;
 	for (i = 0; i < half_w; i++) {
 		sine[i] = sin(i * scaled_pi) * (double)FIX_MULTIPLE;
 	}
@@ -897,7 +896,6 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 		return false;
 
 	/* Fill out sine LUT */
-	i = 0;
 	for (i = 0; i < half_w; i++) {
 		sine[i] = sin(i * scaled_pi) * (double)FIX_MULTIPLE;
 	}
