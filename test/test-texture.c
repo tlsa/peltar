@@ -147,12 +147,14 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	if (opt.cellular) {
-		if (!planet_generate_texture_man_made(p2, 0xff0000)) {
+		if (!planet_generate_texture_man_made(p2, (struct colour)
+				{ .r = 0xff, .g = 0x00, .b = 0x00 },
+				screen)) {
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}
 	} else {
-		if (!planet_generate_texture(p2)) {
+		if (!planet_generate_texture(p2, screen)) {
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}
@@ -172,7 +174,8 @@ int main(int argc, char *argv[])
 					planet_set_lighting(p1, lighting);
 					planet_set_lighting(p2, lighting);
 				} else if (event.key.keysym.sym == SDLK_t) {
-					if (!planet_generate_texture(p2)) {
+					if (!planet_generate_texture(p2,
+							screen)) {
 						SDL_Quit();
 						return EXIT_FAILURE;
 					}

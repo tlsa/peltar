@@ -49,17 +49,21 @@ void game_free(struct game *game)
 }
 
 
-static bool game_create_details(struct game *game, int width, int height)
+static bool game_create_details(struct game *game, int width, int height,
+		const SDL_Surface *screen)
 {
-	if (!player_create(&game->p1, 0x000077ff)) {
+	if (!player_create(&game->p1, (struct colour)
+			{ .r = 0x00, .g = 0x77, .b = 0xff })) {
 		return false;
 	}
 
-	if (!player_create(&game->p2, 0x00ff0000)) {
+	if (!player_create(&game->p2, (struct colour)
+			{ .r = 0xff, .g = 0x00, .b = 0x00 })) {
 		return false;
 	}
 
-	if (!level_create(&game->l, game->p1, game->p2, width, height)) {
+	if (!level_create(&game->l, game->p1, game->p2,
+			width, height, screen)) {
 		return false;
 	}
 
@@ -67,7 +71,8 @@ static bool game_create_details(struct game *game, int width, int height)
 }
 
 
-bool game_create(struct game **game, int width, int height)
+bool game_create(struct game **game, int width, int height,
+		const SDL_Surface *screen)
 {
 	*game = malloc(sizeof(struct game));
 	if (*game == NULL)
@@ -78,7 +83,7 @@ bool game_create(struct game **game, int width, int height)
 	(*game)->p2 = NULL;
 	(*game)->start = true;
 
-	if (!game_create_details(*game, width, height)) {
+	if (!game_create_details(*game, width, height, screen)) {
 		game_free(*game);
 		return false;
 	}
@@ -86,9 +91,10 @@ bool game_create(struct game **game, int width, int height)
 	return true;
 }
 
-bool game_handle_key(struct game *g, SDL_Event *event)
+bool game_handle_key(struct game *g, SDL_Event *event,
+		const SDL_Surface *screen)
 {
-	if (level_handle_key(g->l, event))
+	if (level_handle_key(g->l, event, screen))
 		return true;
 
 	switch (event->key.keysym.sym) {

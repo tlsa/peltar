@@ -23,46 +23,6 @@ static inline int interpolate(int64_t a, int64_t b, int f)
 		return b + (((a - b) * (FIX_MULTIPLE - f)) / FIX_MULTIPLE);
 }
 
-static inline uint32_t interpolate_colour(uint32_t a, uint32_t b, uint32_t f)
-{
-	uint64_t difference;
-
-	if (a > b) {
-		difference = a - b;
-
-		return b + ((difference * (FIX_MULTIPLE - f)) / FIX_MULTIPLE);
-	} else {
-		difference = b - a;
-
-		return a + ((difference * f) / FIX_MULTIPLE);
-	}
-}
-
-static inline uint32_t texture_interpolate_colour_32bpp(
-		uint32_t a, uint32_t b, uint32_t f)
-{
-	uint32_t res;
-	uint8_t r1, g1, b1;
-	uint8_t r2, g2, b2;
-
-	r1 = (a & 0xff0000) >> 16;
-	r2 = (b & 0xff0000) >> 16;
-
-	g1 = (a & 0xff00) >> 8;
-	g2 = (b & 0xff00) >> 8;
-
-	b1 = (a & 0xff);
-	b2 = (b & 0xff);
-
-	r1 = (interpolate_colour(r1, r2, f) & 0xff);
-	g1 = (interpolate_colour(g1, g2, f) & 0xff);
-	b1 = (interpolate_colour(b1, b2, f) & 0xff);
-
-	res = b1 + (g1 << 8) + (r1 << 16);
-
-	return res;
-}
-
 static inline void texture_earth_like_get_thresholds(int y, int r,
 		int levels[4])
 {
@@ -152,52 +112,51 @@ static inline void texture_earth_like_get_thresholds(int y, int r,
 
 }
 
-static inline uint32_t texture_earth_like_forest(const struct point_3d p,
+static inline struct colour texture_earth_like_forest(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint8_t texture, texture2;
-	uint32_t res;
+	uint8_t texture;
+	struct colour res;
 
 	(void)(s);
 
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 16;
 	texture += 255 / 8 + 255 / 32;
-	texture2 = texture / 2;
-	res = texture2 / 2 + (texture << 8) + (texture2 << 16);
 
-#ifdef _RED_BLUE_SWAP
-	return colours_swap_rb(res);
-#else
+	res.r = texture / 4;
+	res.g = texture;
+	res.b = texture / 2;
+	res.a = 0;
+
 	return res;
-#endif
 }
 
-static inline uint32_t texture_earth_like_grass(const struct point_3d p,
+static inline struct colour texture_earth_like_grass(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint8_t texture, texture2;
-	uint32_t res;
+	uint8_t texture;
+	struct colour res;
 
 	(void)(s);
 
 	texture = noise_get_value_at_pos_standard(p, seeds[2], 2) >> 24;
 	texture /= 8;
 	texture += 255 / 8 + 255 / 16 + 255 / 32 + 255 / 64;
-	texture2 = texture / 2;
-	res = texture2 / 2 + (texture << 8) + (texture2 << 16);
 
-#ifdef _RED_BLUE_SWAP
-	return colours_swap_rb(res);
-#else
+	res.r = texture / 4;
+	res.g = texture;
+	res.b = texture / 2;
+	res.a = 0;
+
 	return res;
-#endif
 }
 
-static inline uint32_t texture_earth_like_desert(const struct point_3d p,
+static inline struct colour texture_earth_like_desert(const struct point_3d p,
 		const uint32_t seeds[4], int s)
 {
-	uint32_t res, value, texture;
+	uint32_t value, texture;
+	struct colour res;
 
 	value = noise_get_value_at_pos_flipflop(p, seeds[3], s - 1);
 
@@ -208,33 +167,33 @@ static inline uint32_t texture_earth_like_desert(const struct point_3d p,
 		/* Light / yellow desert */
 		texture = noise_get_value_at_pos_standard(p, seeds[0], 3) >>
 				(32 - FIX_SHIFT);
-		res = texture_interpolate_colour_32bpp(
+		res = colour_interpolate(
 				DESERT_LIGHT_1, DESERT_LIGHT_2, texture);
 
 	} else if (value < THRESH_2) {
 		/* Transition desert */
-		uint32_t light, dark;
+		struct colour light, dark;
 		uint64_t wide;
 		texture = noise_get_value_at_pos_standard(p, seeds[0], 3) >>
 				(32 - FIX_SHIFT);
-		light = texture_interpolate_colour_32bpp(
+		light = colour_interpolate(
 				DESERT_LIGHT_1, DESERT_LIGHT_2, texture);
 
 		texture = noise_get_value_at_pos_standard(p, seeds[2], 3) >>
 				(32 - FIX_SHIFT);
-		dark = texture_interpolate_colour_32bpp(
+		dark = colour_interpolate(
 				DESERT_DARK_1, DESERT_DARK_2, texture);
 
 		wide = ((uint64_t)(value - THRESH_1)) << FIX_SHIFT;
 		texture = (uint32_t)(wide / (uint64_t)(THRESH_2 - THRESH_1));
 
-		res = texture_interpolate_colour_32bpp(
+		res = colour_interpolate(
 				light, dark, texture);
 	} else {
 		/* Dark / red desert */
 		texture = noise_get_value_at_pos_standard(p, seeds[2], 3) >>
 				(32 - FIX_SHIFT);
-		res = texture_interpolate_colour_32bpp(
+		res = colour_interpolate(
 				DESERT_DARK_1, DESERT_DARK_2, texture);
 	}
 
@@ -281,12 +240,13 @@ static inline void texture_earth_like_get_terrain_type(uint32_t value,
 	}
 }
 
-uint32_t texture_earth_like_planet_32bpp(const struct point_3d p,
+struct colour texture_earth_like_planet_32bpp(const struct point_3d p,
 		const uint32_t seeds[4], int s, uint32_t radius, uint32_t y)
 {
-	uint32_t res, value, pos;
-	int levels[4];
 	enum earth_like_terrain_type type;
+	uint32_t value, pos;
+	struct colour res;
+	int levels[4];
 
 	/* Get texture noise value for pixel */
 	value = noise_get_value_at_pos_flipflop(p, seeds[0], s);
@@ -311,7 +271,7 @@ uint32_t texture_earth_like_planet_32bpp(const struct point_3d p,
 			break;
 
 		case DESERT_GRASS:
-			res = texture_interpolate_colour_32bpp(
+			res = colour_interpolate(
 					texture_earth_like_desert(p, seeds, s),
 					texture_earth_like_grass(p, seeds, s),
 					pos);
@@ -322,7 +282,7 @@ uint32_t texture_earth_like_planet_32bpp(const struct point_3d p,
 			break;
 
 		case GRASS_FOREST:
-			res = texture_interpolate_colour_32bpp(
+			res = colour_interpolate(
 					texture_earth_like_grass(p, seeds, s),
 					texture_earth_like_forest(p, seeds, s),
 					pos);

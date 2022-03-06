@@ -6,12 +6,15 @@
 #include <stdint.h>
 #include <SDL.h>
 
+#include "colours.h"
+
 struct player;
 
-bool player_create(struct player **player, uint32_t colour);
+bool player_create(struct player **player, struct colour c);
 void player_free(struct player *player);
 
-bool player_setup_graphics(struct player *p, int size);
+bool player_setup_graphics(struct player *p, int size,
+		const SDL_Surface *screen);
 
 bool player_handle_key(struct player *p, SDL_Event *event);
 
@@ -34,7 +37,7 @@ void player_update_render_scaled(struct player *p, SDL_Surface *screen,
 int player_get_size(struct player *p);
 int player_get_size_scaled(struct player *p);
 
-uint32_t player_get_colour(struct player *p);
+uint32_t player_get_render_colour(struct player *p);
 
 void player_set_mouse_pos_to_target(struct player *p);
 void player_set_target(struct player *p, Uint16 x, Uint16 y);

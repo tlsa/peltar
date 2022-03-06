@@ -164,7 +164,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			/* Nothing to render */
 			continue;
 
-		/* Get offset to start of pixels within cricle on this row */
+		/* Get offset to start of pixels within circle on this row */
 		line_start = size / 2 - line_length;
 
 		/* Cache angles for row of points in quarter circle */
@@ -177,7 +177,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			 * argument is scaled for acos() LUT size */
 			/* Subtracting 0.5 from adjacent to bring centre columns
 			 * from each half away from each other.
-			 * (Avoid dupication seam down planet centre.) */
+			 * (Avoid duplication seam down planet centre.) */
 			angle = arc_cosine((((adjacent << FIX_SHIFT) -
 					(FIX_MULTIPLE / 2)) / line_length) >>
 					CONV_FIX_TO_LUT);
@@ -189,7 +189,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 	}
 
 	/* Allocate memory for lighting cache */
-	p->lighting = malloc(sizeof(int) * 2 * px_count);
+	p->lighting = malloc(sizeof(*p->lighting) * 2 * px_count);
 	if (p->lighting == NULL) {
 		return false;
 	}
@@ -226,7 +226,7 @@ static bool planet_create_details(struct planet_internals *p, int size)
 			 * (Theta's the angle between L and N)
 			 *
 			 * Want lighting to come from left / front, so Ly
-			 * component is 0, so y is irrelevent.
+			 * component is 0, so y is irrelevant.
 			 *
 			 * For easy maths (unit vector), using 8-15-17 triangle
 			 * for lighting:
@@ -365,7 +365,7 @@ static void planet_update_render_flat(struct planet_internals *p,
 	const int *restrict angle_cache = p->angles;
 
 	/* Loop through top left quarter of circle, and render symmetrically
-	 * reflected points on each itteration. */
+	 * reflected points on each iteration. */
 	for (y = 0; y < radius; y++) {
 
 		/* Look up the number of pixels that are within the quarter
@@ -411,7 +411,7 @@ static void planet_update_render_flat(struct planet_internals *p,
 
 			/* Do same to render the two pixels on the right side */
 			/* Angle from other half can be reused as (1 - angle),
-			 * explioting cosine symmetry.  (To map from first
+			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
 			angle = FIX_MULTIPLE - angle - rotation;
 			if (angle < 0)
@@ -460,7 +460,7 @@ static inline void planet_set_pixel_lighting(uint32_t *restrict pixel,
 {
 	/* Set it to colour of appropriate pixel in texture, with shading */
 	*pixel = (((*lighting * (0x00ff00ff & *texture)) >> 8) & 0x00ff00ff) |
-		 (((*lighting * (0x0000ff00 & *texture)) >> 8) & 0x0000ff00);
+		 (((*lighting * (0xff00ff00 & *texture)) >> 8) & 0xff00ff00);
 }
 
 
@@ -485,7 +485,7 @@ static void planet_update_render_lighting(struct planet_internals *p,
 	const Uint8 *restrict l = p->lighting; /* lighting cache index */
 
 	/* Loop through top left quarter of circle, and render symmetrically
-	 * reflected points on each itteration. */
+	 * reflected points on each iteration. */
 	for (y = 0; y < radius; y++) {
 
 		/* Look up the number of pixels that are within the quarter
@@ -533,7 +533,7 @@ static void planet_update_render_lighting(struct planet_internals *p,
 
 			/* Do same to render the two pixels on the right side */
 			/* Angle from other half can be reused as (1 - angle),
-			 * explioting cosine symmetry.  (To map from first
+			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
 			angle = FIX_MULTIPLE - angle - rotation;
 			if (angle < 0)
@@ -636,10 +636,10 @@ static void planet_make_small_texture(struct planet *p)
 	for (y = 0; y < p->small.texture_h - 1; y++) {
 		for (x = 0; x < p->small.texture_w - 1; x++) {
 			small[i] = planet_make_small_texture_px(
-					&big[j], 0xff00ff,
+					&big[j], 0x00ff00ff,
 					p->big.texture_w);
 			small[i] |= planet_make_small_texture_px(
-					&big[j], 0x00ff00,
+					&big[j], 0xff00ff00,
 					p->big.texture_w);
 			i++;
 			j += 4;
@@ -726,48 +726,8 @@ static inline struct point_3d planet_point_from_texture_coord(
 	return ret;
 }
 
-static inline uint32_t interpolate_colour(uint32_t a, uint32_t b, uint32_t f)
-{
-	uint64_t difference;
-
-	if (a > b) {
-		difference = a - b;
-
-		return b + ((difference * (FIX_MULTIPLE - f)) / FIX_MULTIPLE);
-	} else {
-		difference = b - a;
-
-		return a + ((difference * f) / FIX_MULTIPLE);
-	}
-}
-
-static inline uint32_t interpolate_colour_32bpp(
-		uint32_t a, uint32_t b, uint32_t f)
-{
-	uint32_t res;
-	uint8_t r1, g1, b1;
-	uint8_t r2, g2, b2;
-
-	r1 = (a & 0xff0000) >> 16;
-	r2 = (b & 0xff0000) >> 16;
-
-	g1 = (a & 0xff00) >> 8;
-	g2 = (b & 0xff00) >> 8;
-
-	b1 = (a & 0xff);
-	b2 = (b & 0xff);
-
-	r1 = (interpolate_colour(r1, r2, f) & 0xff);
-	g1 = (interpolate_colour(g1, g2, f) & 0xff);
-	b1 = (interpolate_colour(b1, b2, f) & 0xff);
-
-	res = b1 + (g1 << 8) + (r1 << 16);
-
-	return res;
-}
-
-
-bool planet_generate_texture(struct planet *planet)
+bool planet_generate_texture(struct planet *planet,
+		const SDL_Surface *screen)
 {
 	struct planet_internals *p = &planet->big;
 	int x, y, i;
@@ -778,7 +738,8 @@ bool planet_generate_texture(struct planet *planet)
 	double scaled_pi = M_PI / (double)(half_w);
 	int *sine;
 	struct point_3d pt;
-	uint32_t prev, next, sea_colour;
+	struct colour *texture = (void *)p->texture;
+	struct colour prev, next, sea_colour;
 
 	/* Allocate sine LUT */
 	sine = malloc((half_w) * (sizeof(int)));
@@ -786,7 +747,6 @@ bool planet_generate_texture(struct planet *planet)
 		return false;
 
 	/* Fill out sine LUT */
-	i = 0;
 	for (i = 0; i < half_w; i++) {
 		sine[i] = sin(i * scaled_pi) * (double)FIX_MULTIPLE;
 	}
@@ -813,8 +773,9 @@ bool planet_generate_texture(struct planet *planet)
 			/* Get 3D location of this texture coordinate */
 			pt = planet_point_from_texture_coord(x, y, r, h,
 					sine, half_w);
-			p->texture[i++] = texture_earth_like_planet_32bpp(
+			texture[i] = texture_earth_like_planet_32bpp(
 					pt, seeds, s, r, y);
+			i++;
 		}
 	}
 
@@ -824,43 +785,47 @@ bool planet_generate_texture(struct planet *planet)
 	i = 0;
 	for (y = 0; y < p->texture_h; y++) {
 		for (x = 0; x < p->texture_w; x++) {
-			if (p->texture[i] != sea_colour) {
+			if (colour_different(&texture[i], &sea_colour)) {
 				int m = 0;
 				if (x == 0) {
-					prev = p->texture[i + p->texture_w - 1];
-					next = p->texture[i + 1];
+					prev = texture[i + p->texture_w - 1];
+					next = texture[i + 1];
 				} else if (x == p->texture_w - 1) {
-					prev = p->texture[i - 1];
-					next = p->texture[i - p->texture_w + 1];
+					prev = texture[i - 1];
+					next = texture[i - p->texture_w + 1];
 				} else {
-					prev = p->texture[i - 1];
-					next = p->texture[i + 1];
+					prev = texture[i - 1];
+					next = texture[i + 1];
 				}
 
 				if (y > 0 && y < p->texture_h - 1) {
-					if (p->texture[i - p->texture_w] ==
-							sea_colour)
+					if (!colour_different(
+							&texture[i - p->texture_w],
+							&sea_colour))
 						m += 6;
-					if (p->texture[i + p->texture_w] ==
-							sea_colour)
+					if (!colour_different(
+							&texture[i + p->texture_w],
+							&sea_colour))
 						m += 6;
 				}
 
-				if (next == sea_colour && prev == sea_colour) {
+				if (!colour_different(&next, &sea_colour) &&
+				    !colour_different(&prev, &sea_colour)) {
 					/* Sea on both sides of pixel */
 					m += 14;
-					p->texture[i] =
-						interpolate_colour_32bpp(
-							p->texture[i],
+					texture[i] =
+						colour_interpolate(
+							texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
-				} else if (next == sea_colour ||
-						prev == sea_colour) {
+				} else if (
+				    !colour_different(&next, &sea_colour) ||
+				    !colour_different(&prev, &sea_colour)) {
 					/* Sea on one side of pixel */
 					m += 8;
-					p->texture[i] =
-						interpolate_colour_32bpp(
-							p->texture[i],
+					texture[i] =
+						colour_interpolate(
+							texture[i],
 							sea_colour,
 							m * FIX_MULTIPLE / 32);
 				}
@@ -871,13 +836,18 @@ bool planet_generate_texture(struct planet *planet)
 
 	free(sine);
 
+	colour_texture_to_screen(screen, texture,
+			p->texture_w * p->texture_h,
+			p->texture);
+
 	planet_make_small_texture(planet);
 
 	return true;
 }
 
 
-bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
+bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
+		const SDL_Surface *screen)
 {
 	struct planet_internals *p = &planet->big;
 	int x, y, i;
@@ -889,6 +859,7 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 	int *sine;
 	struct point_3d pt;
 	struct cellular_texture *cells;
+	struct colour *texture = (void *)p->texture;
 	peltar_fixed dist, max_dist;
 
 	/* Allocate sine LUT */
@@ -897,7 +868,6 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 		return false;
 
 	/* Fill out sine LUT */
-	i = 0;
 	for (i = 0; i < half_w; i++) {
 		sine[i] = sin(i * scaled_pi) * (double)FIX_MULTIPLE;
 	}
@@ -948,13 +918,17 @@ bool planet_generate_texture_man_made(struct planet *planet, uint32_t colour)
 			dist = p->texture[i];
 			pt = planet_point_from_texture_coord(x, y, r, h,
 					sine, half_w);
-			p->texture[i++] = texture_man_made_32bpp(pt, dist,
-					max_dist, seeds, s, colour);
+			texture[i++] = texture_man_made_32bpp(pt, dist,
+					max_dist, seeds, s, c);
 		}
 	}
 
 	cellular_texture_free(cells);
 	free(sine);
+
+	colour_texture_to_screen(screen, texture,
+			p->texture_w * p->texture_h,
+			p->texture);
 
 	planet_make_small_texture(planet);
 
