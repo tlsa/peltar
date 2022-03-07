@@ -17,6 +17,11 @@ struct point {
 	int y;
 };
 
+struct rect {
+	struct point a;
+	struct point b;
+};
+
 struct peltar_config {
 	bool fullscreen;
 	uint64_t screen_width;
