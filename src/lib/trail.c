@@ -52,15 +52,16 @@ static void trail_draw_internal(const trail_t *trail,
 	}
 }
 
-void trail_draw(const trail_t *trail,
-		int x0, int y0, int x1, int y1)
+void trail_draw(const trail_t *trail, const struct rect *rect)
 {
-	if (x0 < 0 || x0 >= trail->width) return;
-	if (x1 < 0 || x1 >= trail->width) return;
-	if (y0 < 0 || y0 >= trail->height) return;
-	if (y1 < 0 || y1 >= trail->height) return;
+	if (rect->a.x < 0 || rect->a.x >= trail->width) return;
+	if (rect->b.x < 0 || rect->b.x >= trail->width) return;
+	if (rect->a.y < 0 || rect->a.y >= trail->height) return;
+	if (rect->b.y < 0 || rect->b.y >= trail->height) return;
 
-	trail_draw_internal(trail, x0, y0, x1, y1);
+	trail_draw_internal(trail,
+			rect->a.x, rect->a.y,
+			rect->b.x, rect->b.y);
 }
 
 void trail_render(const trail_t *trail,

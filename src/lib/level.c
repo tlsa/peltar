@@ -835,21 +835,13 @@ static void level__draw_projectile(
 
 	if (l->proj.count > 0) {
 		if (l->scale == NORMAL) {
-			trail_draw(l->trails[NORMAL],
-					r[NORMAL].a.x,
-					r[NORMAL].a.y,
-					r[NORMAL].b.x,
-					r[NORMAL].b.y);
+			trail_draw(l->trails[NORMAL], &r[NORMAL]);
 			trail_render(l->trails[NORMAL],
 					image_get_surface(l->background[NORMAL]),
 					l->colour[player]);
 		}
 
-		trail_draw(l->trails[SCALED],
-				r[SCALED].a.x,
-				r[SCALED].a.y,
-				r[SCALED].b.x,
-				r[SCALED].b.y);
+		trail_draw(l->trails[SCALED], &r[SCALED]);
 		trail_render(l->trails[SCALED],
 				image_get_surface(l->background[SCALED]),
 				l->colour[player]);
