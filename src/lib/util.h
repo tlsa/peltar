@@ -32,8 +32,8 @@ static inline int peltar_round_up_n(int value, int n)
 
 static inline uint32_t blend_colour(uint32_t a, uint32_t b)
 {
-	return (((((a & 0xff00ff) + (b & 0xff00ff)) >> 1) & 0xff00ff) |
-	        ((((a & 0x00ff00) + (b & 0x00ff00)) >> 1) & 0x00ff00));
+	return (((((a & 0x00ff00ff) + (b & 0x00ff00ff)) >> 1) & 0x00ff00ff) |
+	        ((((a & 0xff00ff00) + (b & 0xff00ff00)) >> 1) & 0xff00ff00));
 }
 
 #endif
