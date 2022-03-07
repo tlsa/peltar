@@ -63,7 +63,7 @@ void trail_draw(const trail_t *trail,
 	trail_draw_internal(trail, x0, y0, x1, y1);
 }
 
-void trial_render(const trail_t *trail,
+void trail_render(const trail_t *trail,
 		SDL_Surface *bg,
 		uint32_t colour)
 {
