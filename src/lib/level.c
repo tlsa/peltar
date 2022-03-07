@@ -794,11 +794,11 @@ static void level_end_turn(
 		enum players player,
 		SDL_Surface *screen)
 {
-	trail_render(l->trails[SCALED],
+	trail_render(l->trails[SCALED], NULL,
 			image_get_surface(l->background[SCALED]),
 			blend_colour(l->colour[player], 0));
 	trail_clear(l->trails[SCALED]);
-	trail_render(l->trails[NORMAL],
+	trail_render(l->trails[NORMAL], NULL,
 			image_get_surface(l->background[NORMAL]),
 			blend_colour(l->colour[player], 0));
 	trail_clear(l->trails[NORMAL]);
@@ -836,13 +836,13 @@ static void level__draw_projectile(
 	if (l->proj.count > 0) {
 		if (l->scale == NORMAL) {
 			trail_draw(l->trails[NORMAL], &r[NORMAL]);
-			trail_render(l->trails[NORMAL],
+			trail_render(l->trails[NORMAL], &r[NORMAL],
 					image_get_surface(l->background[NORMAL]),
 					l->colour[player]);
 		}
 
 		trail_draw(l->trails[SCALED], &r[SCALED]);
-		trail_render(l->trails[SCALED],
+		trail_render(l->trails[SCALED], &r[SCALED],
 				image_get_surface(l->background[SCALED]),
 				l->colour[player]);
 

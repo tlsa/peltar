@@ -65,12 +65,13 @@ void trail_draw(const trail_t *trail, const struct rect *rect)
 }
 
 void trail_render(const trail_t *trail,
+		const struct rect *rect,
 		SDL_Surface *bg,
 		uint32_t colour)
 {
 	draw_bitmap_1bpp(bg, trail->width, trail->height,
 			trail->row_stride, trail->data,
-			NULL, colour);
+			rect, colour);
 }
 
 void trail_clear(const trail_t *trail)
