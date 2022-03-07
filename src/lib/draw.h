@@ -191,23 +191,48 @@ static inline void draw_line(SDL_Surface *screen,
 static inline void draw_bitmap_1bpp(SDL_Surface *screen,
 		int width, int height,
 		int row_stride, uint32_t *data,
+		const struct rect *rect,
 		uint32_t colour)
 {
 	const int y_step = screen->pitch / peltar_opts.screen_bpp;
 	uint32_t *row = screen->pixels;
+	int y1 = height;
+	int x1 = width;
+	int x0 = 0;
+	int y0 = 0;
+	int x_start;
+	int x_lim;
 
-	(void)(width);
+	if (rect != NULL) {
+		x0 = rect->a.x < rect->b.x ? rect->a.x : rect->b.x;
+		y0 = rect->a.y < rect->b.y ? rect->a.y : rect->b.y;
+		x1 = rect->a.x > rect->b.x ? rect->a.x : rect->b.x;
+		y1 = rect->a.y > rect->b.y ? rect->a.y : rect->b.y;
+		x1++;
+		y1++;
 
-	for (int y = 0; y < height; y++) {
-		uint32_t *pixel = row;
-		for (int x = 0; x < row_stride; x++) {
-			if (data[x] == 0) {
+		if (x0 < 0) x0 = 0;
+		if (y0 < 0) y0 = 0;
+		if (x1 > width) x1 = width;
+		if (y1 > height) y1 = height;
+	}
+
+	x_start = x0 / 32;
+	x_lim = (x1 + 32 - 1) / 32;
+
+	row += y0 * y_step;
+	data += y0 * row_stride;
+
+	for (; y0 < y1; y0++) {
+		uint32_t *pixel = row + x_start * 32;
+		for (int i = x_start; i < x_lim; i++) {
+			if (data[i] == 0) {
 				pixel += 32;
 				continue;
 			}
 
-			for (int i = 0; i < 32; i++) {
-				if (data[x] & (1u << i)) {
+			for (int j = 0; j < 32; j++) {
+				if (data[i] & (1u << j)) {
 					*pixel = colour;
 				}
 				pixel++;

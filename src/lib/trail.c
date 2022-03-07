@@ -70,7 +70,7 @@ void trail_render(const trail_t *trail,
 {
 	draw_bitmap_1bpp(bg, trail->width, trail->height,
 			trail->row_stride, trail->data,
-			colour);
+			NULL, colour);
 }
 
 void trail_clear(const trail_t *trail)
