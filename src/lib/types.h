@@ -12,6 +12,11 @@ struct point_3d {
 	peltar_fixed z;
 };
 
+struct point {
+	int x;
+	int y;
+};
+
 struct peltar_config {
 	bool fullscreen;
 	uint64_t screen_width;

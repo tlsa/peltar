@@ -53,11 +53,6 @@ enum state {
 	LEVEL_WIN_P2
 };
 
-struct point {
-	int x;
-	int y;
-};
-
 struct projectile {
 	peltar_fixed px;
 	peltar_fixed py;
