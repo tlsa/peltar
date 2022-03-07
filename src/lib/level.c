@@ -818,41 +818,48 @@ static void level__draw_projectile(
 		enum players player,
 		struct point *proj_pos)
 {
-	struct point prev[SCALE_COUNT] = {
-		[NORMAL] = l->proj.screen[NORMAL],
-		[SCALED] = l->proj.screen[SCALED],
+	struct rect r[SCALE_COUNT] = {
+		[NORMAL] = {
+			.a = l->proj.screen[NORMAL],
+		},
+		[SCALED] = {
+			.a = l->proj.screen[SCALED],
+		},
 	};
 
 	level_level_to_screen_scaled(proj_pos, &l->proj.screen[SCALED]);
 	level_level_to_screen(l, proj_pos, &l->proj.screen[NORMAL]);
 
+	r[NORMAL].b = l->proj.screen[NORMAL];
+	r[SCALED].b = l->proj.screen[SCALED];
+
 	if (l->proj.count > 0) {
 		if (l->scale == NORMAL) {
 			trail_draw(l->trails[NORMAL],
-					prev[NORMAL].x,
-					prev[NORMAL].y,
-					l->proj.screen[NORMAL].x,
-					l->proj.screen[NORMAL].y);
+					r[NORMAL].a.x,
+					r[NORMAL].a.y,
+					r[NORMAL].b.x,
+					r[NORMAL].b.y);
 			trail_render(l->trails[NORMAL],
 					image_get_surface(l->background[NORMAL]),
 					l->colour[player]);
 		}
 
 		trail_draw(l->trails[SCALED],
-				prev[SCALED].x,
-				prev[SCALED].y,
-				l->proj.screen[SCALED].x,
-				l->proj.screen[SCALED].y);
+				r[SCALED].a.x,
+				r[SCALED].a.y,
+				r[SCALED].b.x,
+				r[SCALED].b.y);
 		trail_render(l->trails[SCALED],
 				image_get_surface(l->background[SCALED]),
 				l->colour[player]);
 
 		level_plot_bg_box(screen,
 				image_get_surface(l->background[l->scale]),
-				prev[l->scale].x,
-				prev[l->scale].y,
-				l->proj.screen[l->scale].x,
-				l->proj.screen[l->scale].y);
+				r[l->scale].a.x,
+				r[l->scale].a.y,
+				r[l->scale].b.x,
+				r[l->scale].b.y);
 	}
 
 	draw_shot_3x3(screen,
