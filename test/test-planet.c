@@ -1,4 +1,5 @@
 
+#include <time.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <SDL/SDL.h>
@@ -12,6 +13,7 @@ struct peltar_config peltar_opts;
 
 static struct peltar_options {
 	bool time;
+	bool generate;
 	uint64_t count;
 	uint64_t radius;
 } opt = {
@@ -27,6 +29,8 @@ static const struct cli_table_entry cli_entries[] = {
 	  .d = "Number of frames to render before exiting. " },
 	{ .l = "radius", .s = 'r', .t = CLI_UINT, .v.u = &opt.radius,
 	  .d = "Radius of planet in pixels." },
+	{ .l = "generate", .s = 'g', .t = CLI_BOOL, .v.b = &opt.generate,
+	  .d = "Generate texture instead of loading file." },
 };
 
 const struct cli_table cli = {
@@ -96,9 +100,18 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!planet_get_texture_from_file(planet, "test/texture.png", screen)) {
-		SDL_Quit();
-		return EXIT_FAILURE;
+	if (opt.generate) {
+		srand(time(NULL));
+		if (!planet_generate_texture(planet, screen)) {
+			SDL_Quit();
+			return EXIT_FAILURE;
+		}
+	} else {
+		if (!planet_get_texture_from_file(planet,
+				"test/texture.png", screen)) {
+			SDL_Quit();
+			return EXIT_FAILURE;
+		}
 	}
 
 	if (opt.time) {
