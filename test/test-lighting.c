@@ -8,22 +8,37 @@
 #include "../src/lib/types.h"
 #include "../src/lib/cli.h"
 
-
-//#define WIDTH 1360
-//#define HEIGHT 768
-#define WIDTH 520
-#define HEIGHT 420
-
-#define SIZE 200
-
 struct peltar_config peltar_opts;
 
+static struct peltar_options {
+	bool time;
+	uint64_t count;
+	uint64_t radius;
+} opt = {
+	.time = false,
+	.count = 50000,
+	.radius = 100,
+};
+
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "time" , .s = 't', .t = CLI_BOOL, .v.b = &opt.time,
+	  .d = "Exit after rendering a fixed number of frames."  },
+	{ .l = "count", .s = 'c', .t = CLI_UINT, .v.u = &opt.count,
+	  .d = "Number of frames to render before exiting. " },
+	{ .l = "radius", .s = 'r', .t = CLI_UINT, .v.u = &opt.radius,
+	  .d = "Radius of planet in pixels." },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
+};
 
 static inline bool screen_draw(SDL_Surface* screen, struct planet *planet)
 {
 	SDL_Rect rect = {
-		.x = (screen->w - SIZE) / 2,
-		.y = (screen->h - SIZE) / 2,
+		.x = (screen->w - opt.radius * 2) / 2,
+		.y = (screen->h - opt.radius * 2) / 2,
 		.w = 0,
 		.h = 0
 	};
@@ -43,26 +58,6 @@ static inline bool screen_draw(SDL_Surface* screen, struct planet *planet)
 	return true;
 }
 
-static struct peltar_options {
-	bool time;
-	uint64_t count;
-} opt = {
-	.time = false,
-	.count = 50000,
-};
-
-static const struct cli_table_entry cli_entries[] = {
-	{ .l = "time" , .s = 't', .t = CLI_BOOL, .v.b = &opt.time,
-	  .d = "Exit after rendering a fixed number of frames."  },
-	{ .l = "count", .s = 'c', .t = CLI_UINT, .v.u = &opt.count,
-	  .d = "Number of frames to render before exiting. " },
-};
-
-const struct cli_table cli = {
-	.entries = cli_entries,
-	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
-};
-
 int main(int argc, char *argv[])
 {
 	SDL_Surface *screen;
@@ -75,8 +70,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	peltar_opts.screen_width = WIDTH;
-	peltar_opts.screen_height = HEIGHT;
+	peltar_opts.screen_width = opt.radius * 9 / 4;
+	peltar_opts.screen_height = opt.radius * 9 / 4;
 	peltar_opts.screen_bpp = 4;
 	peltar_opts.screen_depth = 32;
 
@@ -96,7 +91,7 @@ int main(int argc, char *argv[])
 
 	SDL_WM_SetCaption("Test: Planet lighting", "Test: Lighting");
 
-	if (!planet_create(&planet, SIZE)) {
+	if (!planet_create(&planet, opt.radius * 2)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
