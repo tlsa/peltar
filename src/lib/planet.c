@@ -454,15 +454,13 @@ void planet_update_render_scaled(struct planet *p, SDL_Surface *screen,
 		p->rotation -= (2 << FIX_SHIFT);
 }
 
-
 static inline void planet_set_pixel_lighting(uint32_t *restrict pixel,
 		const uint32_t *restrict texture, const Uint8 *lighting)
 {
 	/* Set it to colour of appropriate pixel in texture, with shading */
 	*pixel = (((*lighting * (0x00ff00ff & *texture)) >> 8) & 0x00ff00ff) |
-		 (((*lighting * (0xff00ff00 & *texture)) >> 8) & 0xff00ff00);
+		 ((*lighting * ((0xff00ff00 & *texture) >> 8)) & 0xff00ff00);
 }
-
 
 static void planet_update_render_lighting(struct planet_internals *p,
 		SDL_Surface *screen, int screen_x, int screen_y, int rotation)
