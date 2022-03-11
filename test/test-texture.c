@@ -10,64 +10,101 @@
 #include "../src/lib/types.h"
 #include "../src/lib/cli.h"
 
-
 #ifndef M_PI
-#define M_PI	3.14159265358979323846
+#define M_PI 3.14159265358979323846
 #endif
-
-
-//#define WIDTH 1360
-//#define HEIGHT 768
-//#define WIDTH 880
-#define WIDTH 1020
-#define HEIGHT 440
-
-#define SIZE 200
 
 struct peltar_config peltar_opts;
 
+static struct peltar_options {
+	bool cellular;
+	uint64_t radius;
+
+} opt = {
+	.cellular = false,
+	.radius = 100,
+};
+
+static const struct cli_table_entry cli_entries[] = {
+	{ .l = "cellular", .s = 'c', .t = CLI_BOOL, .v.b = &opt.cellular,
+	  .d = "Use a cellular texture."  },
+	{ .l = "radius", .s = 'r', .t = CLI_UINT, .v.u = &opt.radius,
+	  .d = "Radius of planet in pixels." },
+};
+
+const struct cli_table cli = {
+	.entries = cli_entries,
+	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
+};
+
+static inline int get_border(void)
+{
+	return opt.radius / 16;
+}
+
+static inline int get_height(void)
+{
+	return opt.radius * 4 + get_border() * 3;
+}
+
+static inline int get_width(void)
+{
+	return get_border()
+		+ opt.radius * 2
+		+ get_border()
+		+ opt.radius * 2 * M_PI
+		+ get_border()
+		+ opt.radius / 4 * 2 * M_PI
+		+ get_border();
+}
 
 bool screen_draw(SDL_Surface* screen, struct planet *p1, struct planet *p2,
 		unsigned int t)
 {
-	SDL_Rect rect1;
-	SDL_Rect rect2;
+	const int border = get_border();
+	const int diameter = opt.radius * 2;
+	const struct {
+		struct point bp;
+		struct point bt;
+		struct point sp;
+		struct point st;
+	} pos = {
+		.bp = {
+			.x = border,
+			.y = border,
+		},
+		.bt = {
+			.x = border + diameter + border,
+			.y = border,
+		},
+		.sp = {
+			.x = border + diameter + border + diameter * M_PI + border,
+			.y = border + diameter / 4 + border,
+		},
+		.st = {
+			.x = border + diameter + border + diameter * M_PI + border,
+			.y = border,
+		},
+	};
+	const int y2 = diameter + border;
 
 	if (SDL_MUSTLOCK(screen)) {
 		if (SDL_LockSurface(screen) < 0)
 			return false;
 	}
 
-	rect1.x = (screen->w -
-			(SIZE + SIZE * M_PI + 8 + SIZE * M_PI / 4 + 8)) / 2;
-	rect1.y = (screen->h - 2 * SIZE) / 2 - 4;
-	rect1.w = 0;
-	rect1.h = 0;
+	planet_update_render(p1, screen, pos.bp.x, pos.bp.y);
+	planet_update_render(p2, screen, pos.bp.x, pos.bp.y + y2);
 
-	rect2.x = (screen->w -
-			(SIZE + SIZE * M_PI + 8 + SIZE * M_PI / 4 + 8)) / 2;
-	rect2.y = screen->h / 2 + 4;
-	rect2.w = 0;
-	rect2.h = 0;
-
-	planet_update_render(p1, screen, rect1.x, rect1.y);
-	planet_update_render(p2, screen, rect2.x, rect2.y);
-
-	planet_update_render_scaled(p1, screen,
-			rect1.x + SIZE + 8 + SIZE * M_PI + 8,
-			rect1.y + SIZE / 4 + 8);
-	planet_update_render_scaled(p2, screen,
-			rect2.x + SIZE + 8 + SIZE * M_PI + 8,
-			rect2.y + SIZE / 4 + 8);
+	planet_update_render_scaled(p1, screen, pos.sp.x, pos.sp.y);
+	planet_update_render_scaled(p2, screen, pos.sp.x, pos.sp.y + y2);
 
 	if (t < 2) {
 		/* render textures */
-		planet_plot_texture(p1, screen, rect1.x + SIZE + 8, rect1.y);
-		planet_plot_texture(p2, screen, rect2.x + SIZE + 8, rect2.y);
-		planet_plot_texture_scaled(p1, screen,
-				rect1.x + SIZE + 8 + SIZE * M_PI + 8, rect1.y);
-		planet_plot_texture_scaled(p2, screen,
-				rect2.x + SIZE + 8 + SIZE * M_PI + 8, rect2.y);
+		planet_plot_texture(p1, screen, pos.bt.x, pos.bt.y);
+		planet_plot_texture(p2, screen, pos.bt.x, pos.bt.y + y2);
+		planet_plot_texture_scaled(p1, screen, pos.st.x, pos.st.y);
+		planet_plot_texture_scaled(p2, screen,pos.st.x, pos.st.y + y2);
 	}
 
 	if (SDL_MUSTLOCK(screen))
@@ -77,24 +114,6 @@ bool screen_draw(SDL_Surface* screen, struct planet *p1, struct planet *p2,
 
 	return true;
 }
-
-static struct peltar_options {
-	bool cellular;
-	uint64_t w;
-	uint64_t h;
-} opt = {
-	.cellular = false,
-};
-
-static const struct cli_table_entry cli_entries[] = {
-	{ .l = "cellular", .s = 'c', .t = CLI_BOOL, .v.b = &opt.cellular,
-	  .d = "Use a cellular texture."  },
-};
-
-const struct cli_table cli = {
-	.entries = cli_entries,
-	.count = (sizeof(cli_entries))/(sizeof(*cli_entries)),
-};
 
 int main(int argc, char *argv[])
 {
@@ -111,8 +130,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	peltar_opts.screen_width = WIDTH;
-	peltar_opts.screen_height = HEIGHT;
+	peltar_opts.screen_width = get_width();
+	peltar_opts.screen_height = get_height();
 	peltar_opts.screen_bpp = 4;
 	peltar_opts.screen_depth = 32;
 
@@ -133,11 +152,11 @@ int main(int argc, char *argv[])
 
 	SDL_WM_SetCaption("Test: Planet texture generation", "Test: Texture");
 
-	if (!planet_create(&p1, SIZE)) {
+	if (!planet_create(&p1, opt.radius * 2)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
-	if (!planet_create(&p2, SIZE)) {
+	if (!planet_create(&p2, opt.radius * 2)) {
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
