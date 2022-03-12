@@ -14,6 +14,7 @@ struct peltar_config peltar_opts;
 static struct peltar_options {
 	bool time;
 	bool generate;
+	bool lighting;
 	uint64_t count;
 	uint64_t radius;
 } opt = {
@@ -31,6 +32,8 @@ static const struct cli_table_entry cli_entries[] = {
 	  .d = "Radius of planet in pixels." },
 	{ .l = "generate", .s = 'g', .t = CLI_BOOL, .v.b = &opt.generate,
 	  .d = "Generate texture instead of loading file." },
+	{ .l = "lighting", .s = 'l', .t = CLI_BOOL, .v.b = &opt.lighting,
+	  .d = "Enable lighting render mode." },
 };
 
 const struct cli_table cli = {
@@ -112,6 +115,10 @@ int main(int argc, char *argv[])
 			SDL_Quit();
 			return EXIT_FAILURE;
 		}
+	}
+
+	if (opt.lighting) {
+		planet_set_lighting(planet, true);
 	}
 
 	if (opt.time) {
