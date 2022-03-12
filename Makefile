@@ -11,7 +11,6 @@ all: peltar
 
 test: \
 	test-planet \
-	test-lighting \
 	test-texture \
 	test-starscape \
 	test-level \
@@ -30,9 +29,6 @@ peltar: $(OBJ_COMMON) $(OBJ_PELTAR)
 	$(CC) $^ $(LFLAGS) -o $@
 
 test-planet: $(OBJ_COMMON) test/test-planet.o
-	$(CC) $^ $(LFLAGS) -o $@
-
-test-lighting: $(OBJ_COMMON) test/test-lighting.o
 	$(CC) $^ $(LFLAGS) -o $@
 
 test-texture: $(OBJ_COMMON) test/test-texture.o
