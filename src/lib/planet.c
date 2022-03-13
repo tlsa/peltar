@@ -593,26 +593,26 @@ void planet_plot_texture_scaled(struct planet *p, SDL_Surface *screen,
  * value.  Call once per channel with appropriate mask.  marker indicates top
  * left pixel in grid, width is row span of large image. */
 static uint32_t planet_make_small_texture_px(const uint32_t *marker,
-		uint32_t mask, unsigned shift, int width)
+		uint32_t mask, unsigned shift, int span)
 {
 	uint32_t ret = 0;
-	width -= 4;
+	span -= 4;
 
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
-	marker += width;
+	marker += span;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
-	marker += width;
+	marker += span;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
-	marker += width;
+	marker += span;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
 	ret += ((*marker++) & mask) >> shift;
