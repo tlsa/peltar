@@ -593,33 +593,33 @@ void planet_plot_texture_scaled(struct planet *p, SDL_Surface *screen,
  * value.  Call once per channel with appropriate mask.  marker indicates top
  * left pixel in grid, width is row span of large image. */
 static uint32_t planet_make_small_texture_px(const uint32_t *marker,
-		uint32_t mask, int width)
+		uint32_t mask, unsigned shift, int width)
 {
 	uint32_t ret = 0;
 	width -= 4;
 
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
 	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
 	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
 	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
 
 	ret /= 16;
-	return ret & mask;
+	return (ret << shift) & mask;
 }
 
 
@@ -634,10 +634,10 @@ static void planet_make_small_texture(struct planet *p)
 	for (y = 0; y < p->small.texture_h - 1; y++) {
 		for (x = 0; x < p->small.texture_w - 1; x++) {
 			small[i] = planet_make_small_texture_px(
-					&big[j], 0x00ff00ff,
+					&big[j], 0x00ff00ff, 0,
 					p->big.texture_w);
 			small[i] |= planet_make_small_texture_px(
-					&big[j], 0xff00ff00,
+					&big[j], 0xff00ff00, 8,
 					p->big.texture_w);
 			i++;
 			j += 4;
