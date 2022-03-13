@@ -364,8 +364,14 @@ static void planet_update_render_flat(struct planet_internals *p,
 	const uint32_t *restrict texture_row_offset_t = p->texture;
 	const uint32_t *restrict texture_row_offset_b = p->texture +
 			(p->texture_h - 1) * p->texture_r;
-	int angle, rot;
 	const int *restrict angle_cache = p->angles;
+	int angle, rot, rot2;
+
+	rot = rotation;
+	rot2 = rotation + FIX_MULTIPLE;
+	if (rot2 >= FIX_MULTIPLE * 5 / 2) {
+		rot2 -= 2 << FIX_SHIFT;
+	}
 
 	/* Loop through top left quarter of circle, and render symmetrically
 	 * reflected points on each iteration. */
@@ -398,12 +404,9 @@ static void planet_update_render_flat(struct planet_internals *p,
 			/* Apply planet's current rotation (between 0 and 2) to
 			 * angle (which is between 0 and 0.5), and wrap back to
 			 * range 0 to 2 */
-			rot = angle - rotation;
-			if (rot < 0)
-				rot += (2 << FIX_SHIFT);
 
 			/* Get offset into texture, for current angle. */
-			offset = (p->texture_w2 * rot) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot + angle)) >> FIX_SHIFT;
 
 			/* Set pixel colour from texture, for top and bottom
 			 * rows */
@@ -416,11 +419,8 @@ static void planet_update_render_flat(struct planet_internals *p,
 			/* Angle from other half can be reused as (1 - angle),
 			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
-			angle = FIX_MULTIPLE - angle - rotation;
-			if (angle < 0)
-				angle += (2 << FIX_SHIFT);
 
-			offset = (p->texture_w2 * angle) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot2 - angle)) >> FIX_SHIFT;
 
 			/* Get offset to pixels on right hand side of circle */
 			right = diameter - x;
@@ -481,9 +481,15 @@ static void planet_update_render_lighting(struct planet_internals *p,
 	const uint32_t *restrict texture_row_offset_t = p->texture;
 	const uint32_t *restrict texture_row_offset_b = p->texture +
 			(p->texture_h - 1) * p->texture_r;
-	int angle, rot;
 	const int *restrict angle_cache = p->angles;
 	const Uint8 *restrict l = p->lighting; /* lighting cache index */
+	int angle, rot, rot2;
+
+	rot = rotation;
+	rot2 = rotation + FIX_MULTIPLE;
+	if (rot2 >= FIX_MULTIPLE * 5 / 2) {
+		rot2 -= 2 << FIX_SHIFT;
+	}
 
 	/* Loop through top left quarter of circle, and render symmetrically
 	 * reflected points on each iteration. */
@@ -516,12 +522,9 @@ static void planet_update_render_lighting(struct planet_internals *p,
 			/* Apply planet's current rotation (between 0 and 2) to
 			 * angle (which is between 0 and 0.5), and wrap back to
 			 * range 0 to 2 */
-			rot = angle - rotation;
-			if (rot < 0)
-				rot += (2 << FIX_SHIFT);
 
 			/* Get offset into texture, for current angle. */
-			offset = (p->texture_w2 * rot) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot + angle)) >> FIX_SHIFT;
 
 			/* Set pixel colour from texture, for top and bottom
 			 * rows */
@@ -536,11 +539,8 @@ static void planet_update_render_lighting(struct planet_internals *p,
 			/* Angle from other half can be reused as (1 - angle),
 			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
-			angle = FIX_MULTIPLE - angle - rotation;
-			if (angle < 0)
-				angle += (2 << FIX_SHIFT);
 
-			offset = (p->texture_w2 * angle) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot2 - angle)) >> FIX_SHIFT;
 
 			/* Get offset to pixels on right hand side of circle */
 			right = diameter - x;
