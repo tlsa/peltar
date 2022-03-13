@@ -38,6 +38,7 @@ struct planet_internals {
 	Uint8 *lighting; /* Cache of circle half lighting fractions */
 
 	int texture_w; /* Width of texture */
+	int texture_r; /* Row span of texture */
 	int texture_h; /* Height of texture */
 	uint32_t *texture; /* Data matches planet render surface colour format */
 	int texture_w2; /* Half width of texture */
@@ -112,10 +113,12 @@ static bool planet_create_details(struct planet_internals *p, int size)
 	/* Texture dimensions */
 	p->texture_h = size;
 	p->texture_w = (size * M_PI) + 0.5;
+	p->texture_r =  + 0.5;
+	p->texture_r = p->texture_w + (p->texture_w + 3) / 4;
 	p->texture_w2 = p->texture_w / 2;
 
 	/* Allocate memory for texture */
-	p->texture = malloc(sizeof(uint32_t) * p->texture_h * p->texture_w);
+	p->texture = malloc(sizeof(uint32_t) * p->texture_h * p->texture_r);
 	if (p->texture == NULL) {
 		return false;
 	}
@@ -360,9 +363,15 @@ static void planet_update_render_flat(struct planet_internals *p,
 			diameter * screen->pitch / peltar_opts.screen_bpp;
 	const uint32_t *restrict texture_row_offset_t = p->texture;
 	const uint32_t *restrict texture_row_offset_b = p->texture +
-			(p->texture_h - 1) * p->texture_w;
-	int angle, rot;
+			(p->texture_h - 1) * p->texture_r;
 	const int *restrict angle_cache = p->angles;
+	int angle, rot, rot2;
+
+	rot = rotation;
+	rot2 = rotation + FIX_MULTIPLE;
+	if (rot2 >= FIX_MULTIPLE * 5 / 2) {
+		rot2 -= 2 << FIX_SHIFT;
+	}
 
 	/* Loop through top left quarter of circle, and render symmetrically
 	 * reflected points on each iteration. */
@@ -381,8 +390,8 @@ static void planet_update_render_flat(struct planet_internals *p,
 		row_offset_b -= screen->pitch / peltar_opts.screen_bpp;
 
 		/* Set offsets to texture pixel data for row */
-		texture_row_offset_t += p->texture_w;
-		texture_row_offset_b -= p->texture_w;
+		texture_row_offset_t += p->texture_r;
+		texture_row_offset_b -= p->texture_r;
 
 		/* Render a row of points in each quarter of the circle */
 		for (x = radius - line_length; x < radius; x++) {
@@ -395,12 +404,9 @@ static void planet_update_render_flat(struct planet_internals *p,
 			/* Apply planet's current rotation (between 0 and 2) to
 			 * angle (which is between 0 and 0.5), and wrap back to
 			 * range 0 to 2 */
-			rot = angle - rotation;
-			if (rot < 0)
-				rot += (2 << FIX_SHIFT);
 
 			/* Get offset into texture, for current angle. */
-			offset = (p->texture_w2 * rot) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot + angle)) >> FIX_SHIFT;
 
 			/* Set pixel colour from texture, for top and bottom
 			 * rows */
@@ -413,11 +419,8 @@ static void planet_update_render_flat(struct planet_internals *p,
 			/* Angle from other half can be reused as (1 - angle),
 			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
-			angle = FIX_MULTIPLE - angle - rotation;
-			if (angle < 0)
-				angle += (2 << FIX_SHIFT);
 
-			offset = (p->texture_w2 * angle) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot2 - angle)) >> FIX_SHIFT;
 
 			/* Get offset to pixels on right hand side of circle */
 			right = diameter - x;
@@ -477,10 +480,16 @@ static void planet_update_render_lighting(struct planet_internals *p,
 			diameter * screen->pitch / peltar_opts.screen_bpp;
 	const uint32_t *restrict texture_row_offset_t = p->texture;
 	const uint32_t *restrict texture_row_offset_b = p->texture +
-			(p->texture_h - 1) * p->texture_w;
-	int angle, rot;
+			(p->texture_h - 1) * p->texture_r;
 	const int *restrict angle_cache = p->angles;
 	const Uint8 *restrict l = p->lighting; /* lighting cache index */
+	int angle, rot, rot2;
+
+	rot = rotation;
+	rot2 = rotation + FIX_MULTIPLE;
+	if (rot2 >= FIX_MULTIPLE * 5 / 2) {
+		rot2 -= 2 << FIX_SHIFT;
+	}
 
 	/* Loop through top left quarter of circle, and render symmetrically
 	 * reflected points on each iteration. */
@@ -499,8 +508,8 @@ static void planet_update_render_lighting(struct planet_internals *p,
 		row_offset_b -= screen->pitch / peltar_opts.screen_bpp;
 
 		/* Set offsets to texture pixel data for row */
-		texture_row_offset_t += p->texture_w;
-		texture_row_offset_b -= p->texture_w;
+		texture_row_offset_t += p->texture_r;
+		texture_row_offset_b -= p->texture_r;
 
 		/* Render a row of points in each quarter of the circle */
 		for (x = radius - line_length; x < radius; x++) {
@@ -513,12 +522,9 @@ static void planet_update_render_lighting(struct planet_internals *p,
 			/* Apply planet's current rotation (between 0 and 2) to
 			 * angle (which is between 0 and 0.5), and wrap back to
 			 * range 0 to 2 */
-			rot = angle - rotation;
-			if (rot < 0)
-				rot += (2 << FIX_SHIFT);
 
 			/* Get offset into texture, for current angle. */
-			offset = (p->texture_w2 * rot) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot + angle)) >> FIX_SHIFT;
 
 			/* Set pixel colour from texture, for top and bottom
 			 * rows */
@@ -533,11 +539,8 @@ static void planet_update_render_lighting(struct planet_internals *p,
 			/* Angle from other half can be reused as (1 - angle),
 			 * exploiting cosine symmetry.  (To map from first
 			 * quadrant to second quadrant.) */
-			angle = FIX_MULTIPLE - angle - rotation;
-			if (angle < 0)
-				angle += (2 << FIX_SHIFT);
 
-			offset = (p->texture_w2 * angle) >> FIX_SHIFT;
+			offset = (p->texture_w2 * (rot2 - angle)) >> FIX_SHIFT;
 
 			/* Get offset to pixels on right hand side of circle */
 			right = diameter - x;
@@ -571,6 +574,7 @@ void planet_plot_texture_internal(struct planet_internals *p, SDL_Surface *scree
 			*pixel++ = p->texture[i++];
 		}
 		row_start += screen->pitch / peltar_opts.screen_bpp;
+		i += p->texture_r - p->texture_w;
 	}
 }
 
@@ -593,35 +597,46 @@ void planet_plot_texture_scaled(struct planet *p, SDL_Surface *screen,
  * value.  Call once per channel with appropriate mask.  marker indicates top
  * left pixel in grid, width is row span of large image. */
 static uint32_t planet_make_small_texture_px(const uint32_t *marker,
-		uint32_t mask, int width)
+		uint32_t mask, unsigned shift, int span)
 {
 	uint32_t ret = 0;
-	width -= 4;
+	span -= 4;
 
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	marker += width;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
-	ret += (*marker++) & mask;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	marker += span;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	marker += span;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	marker += span;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
+	ret += ((*marker++) & mask) >> shift;
 
 	ret /= 16;
-	return ret & mask;
+	return (ret << shift) & mask;
 }
 
+static void planet__texture_extend(uint32_t *restrict texture,
+		int height, int row_span, int width)
+{
+	for (int y = 0; y < height; y++) {
+		int i = y * row_span;
+		for (int x = 0; x < row_span - width; x++) {
+			texture[i + width] = texture[i];
+			i++;
+		}
+	}
+}
 
 static void planet_make_small_texture(struct planet *p)
 {
@@ -634,22 +649,28 @@ static void planet_make_small_texture(struct planet *p)
 	for (y = 0; y < p->small.texture_h - 1; y++) {
 		for (x = 0; x < p->small.texture_w - 1; x++) {
 			small[i] = planet_make_small_texture_px(
-					&big[j], 0x00ff00ff,
-					p->big.texture_w);
+					&big[j], 0x00ff00ff, 0,
+					p->big.texture_r);
 			small[i] |= planet_make_small_texture_px(
-					&big[j], 0xff00ff00,
-					p->big.texture_w);
+					&big[j], 0xff00ff00, 8,
+					p->big.texture_r);
 			i++;
 			j += 4;
 		}
 		small[i++] = big[j];
-		j = (y + 1) * p->big.texture_w * 4;
+		j = (y + 1) * p->big.texture_r * 4;
+		i += p->small.texture_r - p->small.texture_w;
 	}
 
 	for (x = 0; x < p->small.texture_w; x++) {
 		small[i++] = big[j];
 		j += 4;
 	}
+
+	planet__texture_extend(p->small.texture,
+			p->small.texture_h,
+			p->small.texture_r,
+			p->small.texture_w);
 }
 
 
@@ -685,9 +706,15 @@ bool planet_get_texture_from_file(struct planet *planet, const char *filename,
 
 			p->texture[i++] = SDL_MapRGB(screen->format, r, g, b);
 		}
+		i += p->texture_r - p->texture_w;
 	}
 
 	SDL_FreeSurface(sdl_texture);
+
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
 
 	planet_make_small_texture(planet);
 
@@ -775,6 +802,7 @@ bool planet_generate_texture(struct planet *planet,
 					pt, seeds, s, r, y);
 			i++;
 		}
+		i += p->texture_r - p->texture_w;
 	}
 
 	sea_colour = SEA_COLOUR;
@@ -830,12 +858,18 @@ bool planet_generate_texture(struct planet *planet,
 			}
 			i++;
 		}
+		i += p->texture_r - p->texture_w;
 	}
 
 	free(sine);
 
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
+
 	colour_texture_to_screen(screen, texture,
-			p->texture_w * p->texture_h,
+			p->texture_r * p->texture_h,
 			p->texture);
 
 	planet_make_small_texture(planet);
@@ -906,6 +940,7 @@ bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
 			if (dist > max_dist)
 				max_dist = dist;
 		}
+		i += p->texture_r - p->texture_w;
 	}
 
 	/* Create texture */
@@ -919,13 +954,19 @@ bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
 			texture[i++] = texture_man_made_32bpp(pt, dist,
 					max_dist, seeds, s, c);
 		}
+		i += p->texture_r - p->texture_w;
 	}
 
 	cellular_texture_free(cells);
 	free(sine);
 
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
+
 	colour_texture_to_screen(screen, texture,
-			p->texture_w * p->texture_h,
+			p->texture_r * p->texture_h,
 			p->texture);
 
 	planet_make_small_texture(planet);
