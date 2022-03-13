@@ -626,6 +626,17 @@ static uint32_t planet_make_small_texture_px(const uint32_t *marker,
 	return (ret << shift) & mask;
 }
 
+static void planet__texture_extend(uint32_t *restrict texture,
+		int height, int row_span, int width)
+{
+	for (int y = 0; y < height; y++) {
+		int i = y * row_span;
+		for (int x = 0; x < row_span - width; x++) {
+			texture[i + width] = texture[i];
+			i++;
+		}
+	}
+}
 
 static void planet_make_small_texture(struct planet *p)
 {
@@ -655,6 +666,11 @@ static void planet_make_small_texture(struct planet *p)
 		small[i++] = big[j];
 		j += 4;
 	}
+
+	planet__texture_extend(p->small.texture,
+			p->small.texture_h,
+			p->small.texture_r,
+			p->small.texture_w);
 }
 
 
@@ -694,6 +710,11 @@ bool planet_get_texture_from_file(struct planet *planet, const char *filename,
 	}
 
 	SDL_FreeSurface(sdl_texture);
+
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
 
 	planet_make_small_texture(planet);
 
@@ -842,6 +863,11 @@ bool planet_generate_texture(struct planet *planet,
 
 	free(sine);
 
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
+
 	colour_texture_to_screen(screen, texture,
 			p->texture_r * p->texture_h,
 			p->texture);
@@ -933,6 +959,11 @@ bool planet_generate_texture_man_made(struct planet *planet, struct colour c,
 
 	cellular_texture_free(cells);
 	free(sine);
+
+	planet__texture_extend(p->texture,
+			p->texture_h,
+			p->texture_r,
+			p->texture_w);
 
 	colour_texture_to_screen(screen, texture,
 			p->texture_r * p->texture_h,
