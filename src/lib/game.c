@@ -17,12 +17,16 @@
 
 
 struct game {
+	int width;
+	int height;
+
 	struct level *l;
 
 	struct player *p1;
 	struct player *p2;
 
 	bool start;
+	unsigned game_count;
 };
 
 
@@ -78,10 +82,15 @@ bool game_create(struct game **game, int width, int height,
 	if (*game == NULL)
 		return false;
 
+	(*game)->width = width;
+	(*game)->height = height;
+
 	(*game)->l = NULL;
 	(*game)->p1 = NULL;
 	(*game)->p2 = NULL;
+
 	(*game)->start = true;
+	(*game)->game_count = 0;
 
 	if (!game_create_details(*game, width, height, screen)) {
 		game_free(*game);
@@ -130,12 +139,25 @@ void game_update(struct game *g, SDL_Surface *screen)
 	}
 
 	if (complete) {
-		printf("Player %i wins!\n", level_get_winner(g->l));
-		//TODO: Highscore table, menu, etc, rather than free & exit.
+		g->game_count++;
+		printf("Round %u: Player %i wins!\n",
+				g->game_count, level_get_winner(g->l));
+
 		level_free(g->l);
-		player_free(g->p1);
-		player_free(g->p2);
-		exit(EXIT_SUCCESS);
+		SDL_Delay(1000);
+
+		//TODO: Highscore table, menu, etc, rather than free & exit.
+		if (g->game_count == 5) {
+			player_free(g->p1);
+			player_free(g->p2);
+			exit(EXIT_SUCCESS);
+		} else {
+			if (!level_create(&g->l, g->p1, g->p2,
+					g->width, g->height, screen)) {
+				exit(EXIT_FAILURE);
+			}
+			g->start = true;
+		}
 	}
 }
 
